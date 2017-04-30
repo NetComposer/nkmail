@@ -1,0 +1,9 @@
+{application, nkmail, [
+    {description, "NkMAIL Plugin"},
+    {vsn, "develop"},
+    {modules, []},
+    {registered, []},
+    {mod, {nkmail_app, []}},
+    {applications, [nkservice]},
+    {env, []}
+]}.
