@@ -24,8 +24,9 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([send/2]).
 -export([parse_provider/1, parse_msg/2]).
--export([parse_from/1, parse_to/1]).
+-export([parse_msg_fun/2]).
 
+-compile(export_all).
 
 -include("nkmail.hrl").
 
@@ -41,43 +42,29 @@
 %% ===================================================================
 
 
-%% @private
+%% @doc
 send(Msg, #nkmail_provider{config=Config}=Provider) ->
-    case parse_msg(Msg, Provider) of
-        {ok, Mail} ->
-            Opts = make_send_opts(maps:to_list(Config), []),
-            lager:error("DO SEND\n~p\n ~p", [Mail, Opts]),
-            case gen_smtp_client:send_blocking(Mail, Opts) of
-                <<"2.0.0 OK", _/binary>> ->
-                    ok;
-                Other ->
-                    {error, {smtp_error, Other}}
-            end;
-        {error, Error} ->
-            {error, Error}
+    {Mail, Debug} = parse_msg(Msg, Provider),
+    Opts = make_send_opts(maps:to_list(Config), []),
+    case gen_smtp_client:send_blocking(Mail, Opts) of
+        <<"2.0.0 OK", _/binary>> = Reply ->
+            case Debug of
+                true ->
+                    lager:debug("Message sent OK: ~s\n~s", [Reply, element(3, Mail)]);
+                false ->
+                    ok
+            end,
+            ok;
+        Other ->
+            {error, {smtp_error, Other}}
     end.
 
 
-
-%% @private
+%% @doc
 parse_provider(Data) ->
-    Syntax = #{
-        id => binary,
-        class => atom,
-        config => #{
-            relay => binary,
-            port => integer,
-            username => binary,
-            password => binary,
-            force_tls => boolean,
-            force_ath => boolean,
-            from => binary
-        },
-        '__mandatory' => [id, class]
-    },
     case nklib_syntax:parse(Data, #{class=>atom}) of
         {ok, #{class:=smtp}, _, _} ->
-            case nklib_syntax:parse(Data, Syntax) of
+            case nklib_syntax:parse(Data, provider_syntax()) of
                 {ok, #{id:=Id, class:=smtp} = Parsed, _, _} ->
                     Provider = #nkmail_provider{
                         id = Id,
@@ -92,31 +79,10 @@ parse_provider(Data) ->
             continue
     end.
 
+
+%% @doc
 parse_msg(Msg, #nkmail_provider{config=Config}) ->
-    Syntax = #{
-        from => fun ?MODULE:parse_from/1,
-        to => fun ?MODULE:parse_to/1,
-        subject => binary,
-        content_type => binary,
-        body => binary,
-        attachments =>
-            {list,
-                {syntax, #{
-                    name => binary,
-                    content_type => binary,
-                    body => binary
-                    % '__mandatory' => [name, content_type, body]
-                }}},
-        '__defaults' => #{
-            from => maps:get(username, Config, <<>>),
-            subject => <<>>,
-            content_type => <<"text/plain">>,
-            body => <<>>,
-            attachments => []
-        },
-        '__mandatory' => [to]
-    },
-    case nklib_syntax:parse(Msg, Syntax) of
+    case nklib_syntax:parse(Msg, msg_syntax(Config)) of
         {ok, #{attachments:=Attachs}=Parsed, _, []} ->
             case Attachs of
                 [] ->
@@ -131,6 +97,13 @@ parse_msg(Msg, #nkmail_provider{config=Config}) ->
     end.
 
 
+
+
+%% ===================================================================
+%% Internal
+%% ===================================================================
+
+%% @private
 parse_msg_simple(Msg) ->
     #{
         from := {FromDesc, FromUrl},
@@ -140,6 +113,7 @@ parse_msg_simple(Msg) ->
         body := Body
     } = Msg,
     ToUrls = [ToUrl || {_, ToUrl} <- To],
+    Debug = maps:get(debug, Msg, false),
     case CT of
         <<"text/plain">> ->
             Mail = list_to_binary([
@@ -149,27 +123,33 @@ parse_msg_simple(Msg) ->
                 "\r\n",
                 Body
             ]),
-            {ok, {FromUrl, ToUrls, Mail}};
-        <<"text/html">> ->
+            {{FromUrl, ToUrls, Mail}, Debug};
+        _ ->
+            [CT1, CT2] = binary:split(CT, <<"/">>),
             Mime = {
-                <<"text">>,
-                <<"html">>,
+                CT1,
+                CT2,
                     [
                         {<<"From">>, <<FromDesc/binary, " <", FromUrl/binary, ">">>},
                         {<<"Subject">>, Subject}
                     ] ++
                     [{<<"To">>, <<ToDesc/binary, " <", ToUrl/binary, ">">>} || {ToDesc, ToUrl} <- To],
                 [
+                    % If we select 7bit, mimemail does not change the message
+                    % If we select quoted-printable, it uses some config
+                    % If we select base64, it will encode the message as base64
+                    % If empty it does whatever it thinks its 'best'
+                    % For utf8 chars, all of them work
+                    {<<"transfer-encoding">>, <<"base64">>}
                 ],
                 Body
             },
             Mail = mimemail:encode(Mime),
-            {ok, {FromUrl, ToUrls, Mail}};
-        _ ->
-            {error, invalid_content_type}
+            {{FromUrl, ToUrls, Mail}, Debug}
     end.
 
 
+%% @private
 parse_msg_attachments(Msg) ->
     #{
         from := {FromDesc, FromUrl},
@@ -180,55 +160,87 @@ parse_msg_attachments(Msg) ->
         attachments := Attachments
     } = Msg,
     ToUrls = [ToUrl || {_, ToUrl} <- To],
-    {ok, Attachs} = get_attachments(Attachments, []),
+    Debug = maps:get(debug, Msg, false),
+    Attachs = get_attachments(Attachments, []),
     [CT1, CT2] = binary:split(CT, <<"/">>),
-    MimeBody = {
-        CT1,
-        CT2,
-        [
-            {<<"Content-Type">>, <<"text/plain;charset=utf-8">>},
-            {<<"Content-Transfer-Encoding">>, <<"quoted-printable">>},
-            {<<"Content-Disposition">>, <<"inline">>}
-        ],
-        [],
-        Body},
+    MimeBody = {CT1, CT2, [], [], Body},
     MimeMail = {
         <<"multipart">>,
         <<"mixed">>,
-        [
-            {<<"From">>, <<FromDesc/binary, " <", FromUrl/binary, ">">>},
-            {<<"Subject">>, Subject}
-        ] ++
-        [{<<"To">>, <<ToDesc/binary, " <", ToUrl/binary, ">">>} || {ToDesc, ToUrl} <- To],
+            [
+                {<<"From">>, <<FromDesc/binary, " <", FromUrl/binary, ">">>},
+                {<<"Subject">>, Subject}
+            ] ++
+            [{<<"To">>, <<ToDesc/binary, " <", ToUrl/binary, ">">>} || {ToDesc, ToUrl} <- To],
         [],
         [MimeBody | Attachs]
     },
     Mail = mimemail:encode(MimeMail),
-    {ok, {FromUrl, ToUrls, Mail}}.
+    {{FromUrl, ToUrls, Mail}, Debug}.
 
 
 %% @private
 get_attachments([], Acc) ->
-    {ok, Acc};
+    Acc;
 
 get_attachments([#{name:=Name, content_type:=CT, body:=Body}|Rest], Acc) ->
-    [Ct1, Ct2] = binary:split(CT, <<"/">>),
-    M = {Ct1, Ct2,
-        [
-            {<<"Content-Transfer-Encoding">>, <<"base64">>}
-        ],
+    [CT1, CT2] = binary:split(CT, <<"/">>),
+    Mime = {
+        CT1,
+        CT2,
+        [],
         [
             {<<"disposition">>, <<"attachment">>},
             {<<"disposition-params">>, [{<<"filename">>, Name}]}
         ],
         Body},
-    get_attachments(Rest, [M|Acc]).
+    get_attachments(Rest, [Mime|Acc]).
 
 
+%% @private
+msg_syntax(Config) ->
+    #{
+        from => fun ?MODULE:parse_msg_fun/2,
+        to => fun ?MODULE:parse_msg_fun/2,
+        subject => binary,
+        content_type => fun ?MODULE:parse_msg_fun/2,
+        body => binary,
+        attachments =>
+            {list,
+                {syntax, #{
+                    name => binary,
+                    content_type => fun ?MODULE:parse_msg_fun/2,
+                    body => binary,
+                    '__mandatory' => [<<"attachments.name">>, <<"attachments.content_type">>, <<"attachments.body">>]
+                }}},
+        '__defaults' => #{
+            from => maps:get(username, Config, <<>>),
+            subject => <<>>,
+            content_type => <<"text/plain">>,
+            body => <<>>,
+            attachments => []
+        },
+        '__mandatory' => [to],
+        debug => boolean
+    }.
 
-%% ===================================================================
-%% Internal
-%% ===================================================================
+
+%% @private
+provider_syntax() ->
+    #{
+        id => binary,
+        class => atom,
+        config => #{
+            relay => binary,
+            port => integer,
+            username => binary,
+            password => binary,
+            force_tls => boolean,
+            force_ath => boolean,
+            from => binary
+        },
+        '__mandatory' => [id, class]
+    }.
 
 
 %% @private
@@ -255,19 +267,24 @@ make_send_opts([_|Rest], Acc) ->
 
 
 %% @private
-parse_from(<<>>) ->
+parse_msg_fun(from, <<>>) ->
     {error, {missing_field, <<"from">>}};
 
-parse_from(Key) ->
-    case parse_rfc822(Key) of
+parse_msg_fun(from, Val) ->
+    case parse_rfc822(Val) of
         {ok, [{Desc, Url}]} -> {ok, {Desc, Url}};
         error -> error
+    end;
+
+parse_msg_fun(to, Val) ->
+    parse_rfc822(Val);
+
+parse_msg_fun(content_type, Val) ->
+    Val2 = to_bin(Val),
+    case binary:split(Val2, <<"/">>) of
+        [_, _] -> {ok, Val2};
+        _ -> error
     end.
-
-
-%% @private
-parse_to(Key) ->
-    parse_rfc822(Key).
 
 
 %% @private
