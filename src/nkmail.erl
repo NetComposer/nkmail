@@ -23,8 +23,8 @@
 -module(nkmail).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([send/3]).
-
+-export([send/2]).
+-export_type([mail_msg/0, provider_id/0, provider_class/0]).
 -include("nkmail.hrl").
 
 
@@ -43,27 +43,41 @@
         subject => binary(),
         content_type => binary(),   % "text/plain", "text/html"
         body => binary(),
-        attachments => [#{name => binary, content_type => binary, body => binary}]
+        attachments => [#{name => binary, content_type => binary, body => binary}],
+        debug => boolean
     }.
 
 
+
+%% ===================================================================
+%% Public
+%% ===================================================================
+
+
 %% @doc Sends a mail message
--spec send(nkservice:id(), provider_id(), mail_msg()) ->
+-spec send(nkservice:id(), #nkmail_msg{} | mail_msg()) ->
     ok | {error, term()}.
 
-send(Srv, ProviderId, Msg) ->
+send(Srv, #nkmail_msg{provider_id=ProvId}=Mail) ->
     case nkservice_srv:get_srv_id(Srv) of
         {ok, SrvId} ->
-            case SrvId:nkmail_get_provider(SrvId, ProviderId) of
+            case SrvId:nkmail_get_provider(SrvId, ProvId) of
                 {ok, Provider} ->
-                    SrvId:nkmail_send(SrvId, Provider, Msg);
+                    SrvId:nkmail_send(SrvId, Provider, Mail);
                 {error, Error} ->
                     {error, Error}
             end;
         not_found ->
             {error, service_not_found}
-    end.
+    end;
 
+send(Srv, Msg) ->
+    case nkmail_util:parse_msg(Msg) of
+        {ok, #nkmail_msg{}=Mail} ->
+            send(Srv, Mail);
+        {error, Error} ->
+            {error, Error}
+    end.
 
 
 

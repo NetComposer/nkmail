@@ -32,19 +32,22 @@
 
 -record(nkmail_provider, {
     id :: nkmail:provider_id(),
-    class :: nkmail:provider_class(),
+    class :: nkmail:provider_class(),           % smtp
+    from :: {binary(), binary()} | undefined,
     config :: term()
 }).
 
 
 -record(nkmail_msg, {
     provider_id :: nkmail:provider_id(),
-    from :: binary(),                   %% "Name <user@domain"
-    to :: [binary()],
+    from :: {binary(), binary()} | undefined,
+    to :: {binary(), binary()},
     subject :: binary(),
-    body :: binary()
+    content_type :: binary(),
+    body :: binary(),
+    attachments :: [{Name::binary(), CT::binary(), Body::binary()}],
+    debug :: boolean
 }).
-
 
 -endif.
 

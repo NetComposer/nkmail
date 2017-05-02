@@ -103,7 +103,7 @@ nkmail_parse_provider(_Provider) ->
 
 
 %% @doc Sends a mail message using a provider
--spec nkmail_send(nkservice:id(), #nkmail_provider{}, #nkmail_msg{}) ->
+-spec nkmail_send(nkservice:id(), #nkmail_provider{}, map()) ->
     ok | {error, term()}.
 
 nkmail_send(_SrvId, _Provider, _Msg) ->

@@ -23,8 +23,7 @@
 -module(nkmail_smtp_client).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([send/2]).
--export([parse_provider/1, parse_msg/2]).
--export([parse_msg_fun/2]).
+-export([parse_provider/1]).
 
 -compile(export_all).
 
@@ -44,7 +43,7 @@
 
 %% @doc
 send(Msg, #nkmail_provider{config=Config}=Provider) ->
-    {Mail, Debug} = parse_msg(Msg, Provider),
+    {Mail, Debug} = make_msg(Msg, Provider),
     Opts = make_send_opts(maps:to_list(Config), []),
     case gen_smtp_client:send_blocking(Mail, Opts) of
         <<"2.0.0 OK", _/binary>> = Reply ->
@@ -81,20 +80,12 @@ parse_provider(Data) ->
 
 
 %% @doc
-parse_msg(Msg, #nkmail_provider{config=Config}) ->
-    case nklib_syntax:parse(Msg, msg_syntax(Config)) of
-        {ok, #{attachments:=Attachs}=Parsed, _, []} ->
-            case Attachs of
-                [] ->
-                    parse_msg_simple(Parsed);
-                _ ->
-                    parse_msg_attachments(Parsed)
-            end;
-        {ok, _Parsed, _, [Key|_]} ->
-            {error, {unknown_field, Key}};
-        {error, Error} ->
-            {error, Error}
-    end.
+make_msg(#nkmail_msg{from=MsgFrom}=Msg, #nkmail_provider{from=ProvFrom}) ->
+    From = case MsgFrom of
+        {_, _} -> MsgFrom;
+        undefined -> ProvFrom
+    end,
+    do_make_msg(Msg#nkmail_msg{from=From}).
 
 
 
@@ -104,16 +95,15 @@ parse_msg(Msg, #nkmail_provider{config=Config}) ->
 %% ===================================================================
 
 %% @private
-parse_msg_simple(Msg) ->
-    #{
-        from := {FromDesc, FromUrl},
-        to := To,
-        subject := Subject,
-        content_type := CT,
-        body := Body
+do_make_msg(#nkmail_msg{attachments=[]}=Msg) ->
+    #nkmail_msg{
+        from = {FromDesc, FromUrl},
+        to = To,
+        subject = Subject,
+        content_type = CT,
+        body = Body
     } = Msg,
     ToUrls = [ToUrl || {_, ToUrl} <- To],
-    Debug = maps:get(debug, Msg, false),
     case CT of
         <<"text/plain">> ->
             Mail = list_to_binary([
@@ -123,7 +113,7 @@ parse_msg_simple(Msg) ->
                 "\r\n",
                 Body
             ]),
-            {{FromUrl, ToUrls, Mail}, Debug};
+            {FromUrl, ToUrls, Mail};
         _ ->
             [CT1, CT2] = binary:split(CT, <<"/">>),
             Mime = {
@@ -145,22 +135,19 @@ parse_msg_simple(Msg) ->
                 Body
             },
             Mail = mimemail:encode(Mime),
-            {{FromUrl, ToUrls, Mail}, Debug}
-    end.
+            {FromUrl, ToUrls, Mail}
+    end;
 
-
-%% @private
-parse_msg_attachments(Msg) ->
-    #{
-        from := {FromDesc, FromUrl},
-        to := To,
-        subject := Subject,
-        content_type := CT,
-        body := Body,
-        attachments := Attachments
+do_make_msg(Msg) ->
+    #nkmail_msg{
+        from = {FromDesc, FromUrl},
+        to = To,
+        subject = Subject,
+        content_type = CT,
+        body = Body,
+        attachments = Attachments
     } = Msg,
     ToUrls = [ToUrl || {_, ToUrl} <- To],
-    Debug = maps:get(debug, Msg, false),
     Attachs = get_attachments(Attachments, []),
     [CT1, CT2] = binary:split(CT, <<"/">>),
     MimeBody = {CT1, CT2, [], [], Body},
@@ -176,7 +163,7 @@ parse_msg_attachments(Msg) ->
         [MimeBody | Attachs]
     },
     Mail = mimemail:encode(MimeMail),
-    {{FromUrl, ToUrls, Mail}, Debug}.
+    {FromUrl, ToUrls, Mail}.
 
 
 %% @private
@@ -197,47 +184,20 @@ get_attachments([#{name:=Name, content_type:=CT, body:=Body}|Rest], Acc) ->
     get_attachments(Rest, [Mime|Acc]).
 
 
-%% @private
-msg_syntax(Config) ->
-    #{
-        from => fun ?MODULE:parse_msg_fun/2,
-        to => fun ?MODULE:parse_msg_fun/2,
-        subject => binary,
-        content_type => fun ?MODULE:parse_msg_fun/2,
-        body => binary,
-        attachments =>
-            {list,
-                {syntax, #{
-                    name => binary,
-                    content_type => fun ?MODULE:parse_msg_fun/2,
-                    body => binary,
-                    '__mandatory' => [<<"attachments.name">>, <<"attachments.content_type">>, <<"attachments.body">>]
-                }}},
-        '__defaults' => #{
-            from => maps:get(username, Config, <<>>),
-            subject => <<>>,
-            content_type => <<"text/plain">>,
-            body => <<>>,
-            attachments => []
-        },
-        '__mandatory' => [to],
-        debug => boolean
-    }.
-
 
 %% @private
 provider_syntax() ->
     #{
         id => binary,
         class => atom,
+        from => binary,
         config => #{
             relay => binary,
             port => integer,
             username => binary,
             password => binary,
             force_tls => boolean,
-            force_ath => boolean,
-            from => binary
+            force_ath => booleanonk
         },
         '__mandatory' => [id, class]
     }.
@@ -265,39 +225,3 @@ make_send_opts([_|Rest], Acc) ->
 %% Internal
 %% ===================================================================
 
-
-%% @private
-parse_msg_fun(from, <<>>) ->
-    {error, {missing_field, <<"from">>}};
-
-parse_msg_fun(from, Val) ->
-    case parse_rfc822(Val) of
-        {ok, [{Desc, Url}]} -> {ok, {Desc, Url}};
-        error -> error
-    end;
-
-parse_msg_fun(to, Val) ->
-    parse_rfc822(Val);
-
-parse_msg_fun(content_type, Val) ->
-    Val2 = to_bin(Val),
-    case binary:split(Val2, <<"/">>) of
-        [_, _] -> {ok, Val2};
-        _ -> error
-    end.
-
-
-%% @private
-parse_rfc822(Key) ->
-    case catch smtp_util:parse_rfc822_addresses(Key) of
-        {ok, List} ->
-            {ok, [
-                {case Desc of undefined -> <<>>; _ -> to_bin(Desc) end, to_bin(Url)}
-                || {Desc, Url} <- List
-            ]};
-        _ ->
-            error
-    end.
-
-
-to_bin(T) -> nklib_util:to_binary(T).

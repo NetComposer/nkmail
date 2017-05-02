@@ -53,14 +53,7 @@ start() ->
 %% @private OTP standard start callback
 start(_Type, _Args) ->
     Syntax = #{
-        providers =>
-            {list,
-                {syntax, #{
-                    id => binary,
-                    class => binary,
-                    config => map
-                }}
-            }
+        providers => {list, {syntax, nkmail_api_syntax:provider_syntax()}}
     },
     case nklib_config:load_env(?APP, Syntax) of
         {ok, _} ->
