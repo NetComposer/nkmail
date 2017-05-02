@@ -78,7 +78,7 @@ stop(_) ->
 set_providers() ->
     lists:foreach(
         fun(#{id:=Id}=Provider) -> put({provider, Id}, Provider) end,
-        get(providers)).
+        get(providers, [])).
 
 
 %% @doc
