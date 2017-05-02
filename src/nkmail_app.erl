@@ -52,8 +52,9 @@ start() ->
 
 %% @private OTP standard start callback
 start(_Type, _Args) ->
+    ProvSyntax = nkmail_api_syntax:provider_syntax(),
     Syntax = #{
-        providers => {list, {syntax, nkmail_api_syntax:provider_syntax()}}
+        providers => {list, {syntax, ProvSyntax}}
     },
     case nklib_config:load_env(?APP, Syntax) of
         {ok, _} ->
@@ -64,7 +65,7 @@ start(_Type, _Args) ->
             {ok, Pid};
         {error, Error} ->
             lager:error("Error parsing config: ~p", [Error]),
-            error(Error)
+            error({syntax_error, Error})
     end.
 
 

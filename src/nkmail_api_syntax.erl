@@ -59,11 +59,7 @@ msg_syntax() ->
                 name => binary,
                 content_type => fun ?MODULE:parse_msg_fun/2,
                 body => binary,
-                '__mandatory' => [
-                    <<"attachments.name">>,
-                    <<"attachments.content_type">>,
-                    <<"attachments.body">>
-                ]
+                '__mandatory' => [name, content_type, body]
             }}},
         debug => boolean,
         '__defaults' => #{
@@ -121,7 +117,7 @@ provider_syntax() ->
         class => binary,
         from => fun ?MODULE:parse_msg_fun/2,
         config => map,
-        '__mandatory' => [id, class, from, config]
+        '__mandatory' => [id, class, from]
     }.
 
 
