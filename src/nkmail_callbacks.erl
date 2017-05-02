@@ -72,7 +72,9 @@ plugin_stop(Config, #{id:=_SrvId}) ->
 %% ===================================================================
 
 %% @doc
-api_error(_) -> continue.
+api_error({smtp_error, Error})          -> {"SMTP error: ~p", [Error]};
+api_error({provider_not_found, Id})     -> {"Provider not found: ~p", [Id]};
+api_error(_)                            -> continue.
 
 
 
@@ -90,7 +92,7 @@ nkmail_get_provider(SrvId, Id) ->
         {ok, Map} ->
             SrvId:nkmail_parse_provider(Map);
         not_found ->
-            {error, not_found}
+            {error, {provider_not_found, Id}}
     end.
 
 
@@ -117,7 +119,7 @@ nkmail_send(_SrvId, _Provider, _Msg) ->
 %% ===================================================================
 
 %% @doc
-api_server_syntax(Syntax, #nkapi_req{class = <<"mail">>, subclass=Sub, cmd=Cmd}=Req, State) ->
+api_server_syntax(Syntax, #nkapi_req{class=mail, subclass=Sub, cmd=Cmd}=Req, State) ->
     {nkmail_api_syntax:syntax(Sub, Cmd, Syntax), Req, State};
 
 api_server_syntax(_Syntax, _Req, _State) ->
@@ -125,7 +127,7 @@ api_server_syntax(_Syntax, _Req, _State) ->
 
 
 %% @doc
-api_server_cmd(#nkapi_req{class = <<"mail">>, subclass=Sub, cmd=Cmd, data=Data}, State) ->
+api_server_cmd(#nkapi_req{class=mail, subclass=Sub, cmd=Cmd, data=Data}, State) ->
     nkmail_api:cmd(Sub, Cmd, Data, State);
 
 api_server_cmd(_Req, _State) ->

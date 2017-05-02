@@ -42,8 +42,8 @@
 
 
 %% @doc
-send(Msg, #nkmail_provider{config=Config}=Provider) ->
-    {Mail, Debug} = make_msg(Msg, Provider),
+send(#nkmail_msg{debug=Debug}=Msg, #nkmail_provider{config=Config}=Provider) ->
+    Mail = make_msg(Msg, Provider),
     Opts = make_send_opts(maps:to_list(Config), []),
     case gen_smtp_client:send_blocking(Mail, Opts) of
         <<"2.0.0 OK", _/binary>> = Reply ->
@@ -51,11 +51,22 @@ send(Msg, #nkmail_provider{config=Config}=Provider) ->
                 true ->
                     lager:debug("Message sent OK: ~s\n~s", [Reply, element(3, Mail)]);
                 false ->
-                    ok
+                    o
             end,
-            ok;
+            {ok, #{smtp_reply=>Reply}};
         Other ->
             {error, {smtp_error, Other}}
+    end.
+
+
+%% @doc
+make_msg(#nkmail_msg{from=MsgFrom}=Msg, #nkmail_provider{from=ProvFrom}) ->
+    case MsgFrom of
+        {_, _} ->
+            do_make_msg(Msg);
+        undefined ->
+            {_, _} = ProvFrom,
+            do_make_msg(Msg#nkmail_msg{from=ProvFrom})
     end.
 
 
@@ -64,10 +75,11 @@ parse_provider(Data) ->
     case nklib_syntax:parse(Data, #{class=>atom}) of
         {ok, #{class:=smtp}, _, _} ->
             case nklib_syntax:parse(Data, provider_syntax()) of
-                {ok, #{id:=Id, class:=smtp} = Parsed, _, _} ->
+                {ok, #{id:=Id, class:=smtp, from:=From} = Parsed, _, _} ->
                     Provider = #nkmail_provider{
                         id = Id,
                         class = smtp,
+                        from = From,
                         config = maps:get(config, Parsed, #{})
                     },
                     {ok, Provider};
@@ -79,15 +91,23 @@ parse_provider(Data) ->
     end.
 
 
-%% @doc
-make_msg(#nkmail_msg{from=MsgFrom}=Msg, #nkmail_provider{from=ProvFrom}) ->
-    From = case MsgFrom of
-        {_, _} -> MsgFrom;
-        undefined -> ProvFrom
-    end,
-    do_make_msg(Msg#nkmail_msg{from=From}).
-
-
+%% @private
+provider_syntax() ->
+    #{
+        id => binary,
+        class => atom,
+        from => fun nkmail_api_syntax:parse_msg_fun/2,
+        config => #{
+            relay => binary,
+            port => integer,
+            username => binary,
+            password => binary,
+            retries => {integer, 0, 10},
+            force_tls => boolean,
+            force_ath => boolean
+        },
+        '__mandatory' => [id, class, from]
+    }.
 
 
 %% ===================================================================
@@ -170,7 +190,7 @@ do_make_msg(Msg) ->
 get_attachments([], Acc) ->
     Acc;
 
-get_attachments([#{name:=Name, content_type:=CT, body:=Body}|Rest], Acc) ->
+get_attachments([{Name, CT, Body}|Rest], Acc) ->
     [CT1, CT2] = binary:split(CT, <<"/">>),
     Mime = {
         CT1,
@@ -184,23 +204,6 @@ get_attachments([#{name:=Name, content_type:=CT, body:=Body}|Rest], Acc) ->
     get_attachments(Rest, [Mime|Acc]).
 
 
-
-%% @private
-provider_syntax() ->
-    #{
-        id => binary,
-        class => atom,
-        from => binary,
-        config => #{
-            relay => binary,
-            port => integer,
-            username => binary,
-            password => binary,
-            force_tls => boolean,
-            force_ath => booleanonk
-        },
-        '__mandatory' => [id, class]
-    }.
 
 
 %% @private

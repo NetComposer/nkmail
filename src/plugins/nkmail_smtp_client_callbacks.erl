@@ -23,7 +23,7 @@
 -module(nkmail_smtp_client_callbacks).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([plugin_deps/0, plugin_syntax/0, plugin_start/2, plugin_stop/2]).
+-export([plugin_deps/0]).
 -export([nkmail_parse_provider/1, nkmail_send/3]).
 
 
@@ -47,19 +47,6 @@
 
 plugin_deps() ->
     [nkmail].
-
-
-plugin_syntax() ->
-	#{
-	}.
-
-
-plugin_start(Config, #{id:=_SrvId}) ->
-	{ok, Config}.
-
-
-plugin_stop(Config, #{id:=_SrvId}) ->
-    {ok, Config}.
 
 
 

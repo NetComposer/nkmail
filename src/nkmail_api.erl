@@ -36,7 +36,23 @@
 %% Commands
 %% ===================================================================
 
+
+cmd('', send, Msg, #{srv_id:=SrvId}=State) ->
+    case nkmail:send(SrvId, Msg) of
+        {ok, Reply} ->
+            {ok, Reply, State};
+        {error, Error} ->
+            {error, Error, State}
+    end;
+
 cmd(_Sub, _Cmd, _Data, State) ->
 	{error, not_implemented, State}.
+
+
+
+%% ===================================================================
+%% Extract attachments
+%% ===================================================================
+
 
 

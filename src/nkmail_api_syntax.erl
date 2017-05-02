@@ -23,7 +23,7 @@
 -module(nkmail_api_syntax).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([syntax/3]).
--export([msg_syntax/0, provider_syntax/0]).
+-export([msg_syntax/1, provider_syntax/0]).
 -export([parse_msg_fun/2]).
 
 %% ===================================================================
@@ -31,7 +31,7 @@
 %% ===================================================================
 
 syntax('', send, Syntax) ->
-    Msg = msg_syntax(),
+    Msg = msg_syntax(true),
     maps:merge(Syntax, Msg);
 
 syntax(_Sub, _Cmd, Syntax) ->
@@ -45,7 +45,7 @@ syntax(_Sub, _Cmd, Syntax) ->
 %% ===================================================================
 
 %% @private
-msg_syntax() ->
+msg_syntax(Base64) ->
     #{
         provider => binary,
         from => fun ?MODULE:parse_msg_fun/2,
@@ -58,7 +58,7 @@ msg_syntax() ->
             {syntax, #{
                 name => binary,
                 content_type => fun ?MODULE:parse_msg_fun/2,
-                body => binary,
+                body => case Base64 of true -> base64; false -> binary end,
                 '__mandatory' => [name, content_type, body]
             }}},
         debug => boolean,
@@ -82,6 +82,12 @@ parse_msg_fun(from, Val) ->
         error -> error
     end;
 
+parse_msg_fun(from, Val) ->
+    case parse_rfc822(Val) of
+        {ok, [{Desc, Url}]} -> {ok, {Desc, Url}};
+        error -> error
+    end;
+
 parse_msg_fun(to, Val) ->
     parse_rfc822(Val);
 
@@ -94,6 +100,12 @@ parse_msg_fun(content_type, Val) ->
 
 
 %% @private
+parse_rfc822({Desc, Url}) when is_binary(Desc), is_binary(Url)->
+    {ok, [{Desc, Url}]};
+
+parse_rfc822([{Desc, Url}|_]=List) when is_binary(Desc), is_binary(Url)->
+    {ok, List};
+
 parse_rfc822(Key) ->
     case catch smtp_util:parse_rfc822_addresses(Key) of
         {ok, List} ->
@@ -104,6 +116,7 @@ parse_rfc822(Key) ->
         _ ->
             error
     end.
+
 
 
 %% ===================================================================

@@ -56,7 +56,7 @@
 
 %% @doc Sends a mail message
 -spec send(nkservice:id(), #nkmail_msg{} | mail_msg()) ->
-    ok | {error, term()}.
+    {ok, Meta::map()} | {error, term()}.
 
 send(Srv, #nkmail_msg{provider_id=ProvId}=Mail) ->
     case nkservice_srv:get_srv_id(Srv) of

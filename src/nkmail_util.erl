@@ -35,7 +35,7 @@
 
 %% @doc
 parse_msg(Msg) ->
-    Syntax = nkmail_api_syntax:msg_syntax(),
+    Syntax = nkmail_api_syntax:msg_syntax(false),
     case nklib_syntax:parse(Msg, Syntax) of
         {ok, Parsed, _, []} ->
             #{
