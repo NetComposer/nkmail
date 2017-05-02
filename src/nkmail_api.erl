@@ -24,7 +24,7 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([cmd/4]).
 
--include_lib("nkservice/include/nkservice.hrl").
+-include_lib("nkapi/include/nkapi.hrl").
 
 
 %% ===================================================================
@@ -37,13 +37,14 @@
 %% ===================================================================
 
 
-cmd('', send, Msg, #{srv_id:=SrvId}=State) ->
-    case nkmail:send(SrvId, Msg) of
-        {ok, Reply} ->
-            {ok, Reply, State};
-        {error, Error} ->
-            {error, Error, State}
-    end;
+cmd('', send, #nkapi_req{tid=TId, data=Msg}, #{srv_id:=SrvId}=State) ->
+    Self = self(),
+    spawn_link(
+        fun() ->
+            Reply = nkmail:send(SrvId, Msg),
+            nkapi_server:reply(Self, TId, Reply)
+        end),
+    {ack, State};
 
 cmd(_Sub, _Cmd, _Data, State) ->
 	{error, not_implemented, State}.

@@ -55,7 +55,7 @@ send(#nkmail_msg{debug=Debug}=Msg, #nkmail_provider{config=Config}=Provider) ->
             end,
             {ok, #{smtp_reply=>Reply}};
         Other ->
-            {error, {smtp_error, Other}}
+            {error, {smtp_error, nklib_util:to_binary(Other)}}
     end.
 
 
@@ -103,10 +103,11 @@ provider_syntax() ->
             username => binary,
             password => binary,
             retries => {integer, 0, 10},
+            hostname => binary,
             force_tls => boolean,
             force_ath => boolean
         },
-        '__mandatory' => [id, class, from]
+        '__mandatory' => [id, class, from, 'config.relay']
     }.
 
 
@@ -207,10 +208,10 @@ get_attachments([{Name, CT, Body}|Rest], Acc) ->
 
 
 %% @private
-%% Other options hostname, retry
 make_send_opts([], Acc) ->
     Acc;
-make_send_opts([{Key, Val}|Rest], Acc) when Key==relay; Key==username; Key==password ->
+make_send_opts([{Key, Val}|Rest], Acc) when Key==relay; Key==username; Key==password;
+                                            Key==retries; Key==hostname ->
     make_send_opts(Rest, [{Key, Val}|Acc]);
 
 make_send_opts([{force_tls, true}|Rest], Acc) ->
