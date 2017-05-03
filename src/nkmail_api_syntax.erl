@@ -82,12 +82,6 @@ parse_msg_fun(from, Val) ->
         error -> error
     end;
 
-parse_msg_fun(from, Val) ->
-    case parse_rfc822(Val) of
-        {ok, [{Desc, Url}]} -> {ok, {Desc, Url}};
-        error -> error
-    end;
-
 parse_msg_fun(to, Val) ->
     parse_rfc822(Val);
 
