@@ -25,8 +25,6 @@
 -export([send/2]).
 -export([parse_provider/1]).
 
--compile(export_all).
-
 -include("nkmail.hrl").
 
 %% ===================================================================
