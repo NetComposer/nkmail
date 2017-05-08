@@ -55,12 +55,12 @@ msg_syntax(Base64) ->
         body => binary,
         attachments =>
         {list,
-            {syntax, #{
+            #{
                 name => binary,
                 content_type => fun ?MODULE:parse_msg_fun/2,
                 body => case Base64 of true -> base64; false -> binary end,
                 '__mandatory' => [name, content_type, body]
-            }}},
+            }},
         debug => boolean,
         '__defaults' => #{
             subject => <<>>,

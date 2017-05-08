@@ -103,9 +103,11 @@ provider_syntax() ->
             retries => {integer, 0, 10},
             hostname => binary,
             force_tls => boolean,
-            force_ath => boolean
+            force_ath => boolean,
+            '__mandatory' => [relay]
+
         },
-        '__mandatory' => [id, class, from, 'config.relay']
+        '__mandatory' => [id, class, from, config]
     }.
 
 

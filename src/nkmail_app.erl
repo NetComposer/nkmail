@@ -54,7 +54,7 @@ start() ->
 start(_Type, _Args) ->
     ProvSyntax = nkmail_api_syntax:provider_syntax(),
     Syntax = #{
-        providers => {list, {syntax, ProvSyntax}}
+        providers => {list, ProvSyntax}
     },
     case nklib_config:load_env(?APP, Syntax) of
         {ok, _} ->
