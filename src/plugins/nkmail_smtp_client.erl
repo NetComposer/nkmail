@@ -71,9 +71,9 @@ make_msg(#nkmail_msg{from=MsgFrom}=Msg, #nkmail_provider{from=ProvFrom}) ->
 %% @doc
 parse_provider(Data) ->
     case nklib_syntax:parse(Data, #{class=>atom}) of
-        {ok, #{class:=smtp}, _, _} ->
+        {ok, #{class:=smtp}, _} ->
             case nklib_syntax:parse(Data, provider_syntax()) of
-                {ok, #{id:=Id, class:=smtp, from:=From} = Parsed, _, _} ->
+                {ok, #{id:=Id, class:=smtp, from:=From} = Parsed, _} ->
                     Provider = #nkmail_provider{
                         id = Id,
                         class = smtp,
