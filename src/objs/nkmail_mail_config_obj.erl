@@ -24,7 +24,7 @@
 -behavior(nkdomain_obj).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([create/4, load_providers/2]).
+-export([create/4, load_providers/0]).
 -export([object_get_info/0, object_mapping/0, object_syntax/1,
          object_api_syntax/3, object_api_allow/4, object_api_cmd/4]).
 
@@ -65,15 +65,15 @@ create(Srv, Parent, Name, Provider) ->
 
 
 %% @doc
--spec load_providers(nkservice:id(), nkdomain:id()) ->
-    [ProvId::nkdomain:obj_id()].
+-spec load_providers() ->
+    ok.
 
-load_providers(Srv, Parent) ->
+load_providers() ->
     ProvIds = nkmail_app:get_provider_ids(),
     lists:foreach(
         fun(Id) ->
             Provider = nkmail_app:get_provider(Id),
-            case create(Srv, Parent, Id, Provider) of
+            case create(root, root, Id, Provider) of
                 {ok, ObjId, _Path, _Pid} ->
                     ?LLOG(info, "Loaded provider ~s (~s)", [Id, ObjId]);
                 {error, Error} ->

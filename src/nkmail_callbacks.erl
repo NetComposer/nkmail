@@ -119,7 +119,7 @@ nkmail_send(_SrvId, _Provider, _Msg) ->
 %% ===================================================================
 
 %% @doc
-api_server_syntax(Syntax, #nkapi_req{class=mail, subclass=Sub, cmd=Cmd}=Req, State) ->
+api_server_syntax(Syntax, #nkapi_req{class=nkmail, subclass=Sub, cmd=Cmd}=Req, State) ->
     {nkmail_api_syntax:syntax(Sub, Cmd, Syntax), Req, State};
 
 api_server_syntax(_Syntax, _Req, _State) ->
@@ -127,7 +127,7 @@ api_server_syntax(_Syntax, _Req, _State) ->
 
 
 %% @doc
-api_server_cmd(#nkapi_req{class=mail, subclass=Sub, cmd=Cmd}=Req, State) ->
+api_server_cmd(#nkapi_req{class=nkmail, subclass=Sub, cmd=Cmd}=Req, State) ->
     nkmail_api:cmd(Sub, Cmd, Req, State);
 
 api_server_cmd(_Req, _State) ->
