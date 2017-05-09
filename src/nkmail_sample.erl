@@ -96,6 +96,18 @@ prov_create() ->
     nkdomain_sample:cmd('mail.config', create, Data).
 
 
+prov_update() ->
+    Data = #{
+        id => '/mail.configs/prov1',
+        'mail.config' => #{
+            class => smtp2,
+            from => "test@test.com",
+            config => #{
+                relay => relay
+            }
+        }
+    },
+    nkdomain_sample:cmd('mail.config', update, Data).
 
 
 
