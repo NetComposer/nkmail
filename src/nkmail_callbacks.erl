@@ -75,6 +75,7 @@ service_init(_Service, #{id:=SrvId}=State) ->
 
 %% @doc
 api_error({smtp_error, Error})          -> {"SMTP error: ~p", [Error]};
+api_error(invalid_provider_class )      -> "Invalid provider class";
 api_error({provider_not_found, Id})     -> {"Provider not found: ~p", [Id]};
 api_error(_)                            -> continue.
 
@@ -103,7 +104,7 @@ nkmail_get_provider(_SrvId, Id) ->
     {ok, nkmail:provider()} | {error, term()}.
 
 nkmail_parse_provider(_Provider) ->
-    {error, invalid_provider}.
+    {error, invalid_provider_class}.
 
 
 %% @doc Sends a mail message using a provider

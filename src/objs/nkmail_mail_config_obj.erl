@@ -29,6 +29,7 @@
          object_api_syntax/3, object_api_allow/4, object_api_cmd/4]).
 
 -include("nkmail.hrl").
+-include_lib("nkapi/include/nkapi.hrl").
 
 -define(LLOG(Type, Txt, Args),
     lager:Type("NkMAIL Config "++Txt, Args)).
@@ -46,16 +47,16 @@
 
 
 %% @doc
-%% Data must follow object's syntax
 -spec create(nkservice:id(), nkdomain:id(), nkdomain:name(), map()) ->
     {ok, nkdomain:obj_id(), nkdomain:path(), pid()} | {error, term()}.
 
 create(Srv, Parent, Name, Provider) ->
-    case nkmail:parse_provider(Srv, Provider) of
-        {ok, _} ->
+    Provider2 = Provider#{id=>Name},
+    case nkmail:parse_provider(Srv, Provider2) of
+        {ok, Provider3} ->
             Opts = #{
                 obj_name => Name,
-                type_obj => Provider,
+                type_obj => Provider3,
                 subtype => <<"config">>
             },
             nkdomain_obj_lib:make_and_create(Srv, Parent, ?DOMAIN_MAIL_CONFIG, Opts);
@@ -101,17 +102,17 @@ object_get_info() ->
 
 %% @private
 object_mapping() ->
-    nkdomain_config_obj:object_mapping().
+    disabled.
 
 
 %% @private
-object_syntax(_) ->
+object_syntax(_Mode) ->
     any.
 
 
 %% @private
 object_api_syntax(Sub, Cmd, Syntax) ->
-    nkdomain_config_obj:object_api_syntax(Sub, Cmd, Syntax).
+    nkdomain_obj_syntax:syntax(Sub, Cmd, ?DOMAIN_MAIL_CONFIG, Syntax).
 
 
 %% @private
@@ -119,9 +120,8 @@ object_api_allow(_Sub, _Cmd, _Data, State) ->
     {true, State}.
 
 
-%% @private
 object_api_cmd(Sub, Cmd, Req, State) ->
-    nkdomain_config_obj:object_api_cmd(Sub, Cmd, Req, State).
+    nkdomain_obj_api:api(Sub, Cmd, Req, ?DOMAIN_MAIL_CONFIG, State).
 
 
 

@@ -36,7 +36,7 @@ send1() ->
         subject => "sub2",
         body => "msg2"
     },
-    nkdomain_sample:cmd(mail, send, Msg).
+    nkdomain_sample:cmd(nkmail, send, Msg).
 
 
 
@@ -66,7 +66,7 @@ send2() ->
             }
         ]
     },
-    nkdomain_sample:cmd(mail, send, Msg).
+    nkdomain_sample:cmd(nkmail, send, Msg).
 
 
 send3() ->
@@ -76,4 +76,29 @@ send3() ->
         subject => "sub2",
         body => "msg2"
     },
-    nkdomain_sample:cmd(mail, send, Msg).
+    nkdomain_sample:cmd(nkmail, send, Msg).
+
+
+
+%%% DOMAIN
+
+prov_create() ->
+    Data = #{
+        obj_name => prov1,
+        'mail.config' => #{
+            class => smtp,
+            from => "test@test.com",
+            config => #{
+                relay => relay
+            }
+        }
+    },
+    nkdomain_sample:cmd('mail.config', create, Data).
+
+
+
+
+
+
+
+
