@@ -24,6 +24,7 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([send/2]).
 -export([parse_provider/1]).
+-export_type([provider_config/0]).
 
 -include("nkmail.hrl").
 
@@ -31,6 +32,17 @@
 %% Types
 %% ===================================================================
 
+-type provider_config() ::
+    #{
+        relay => binary(),
+        port => integer(),
+        username => binary(),
+        password => binary(),
+        retries => 0..10,
+        hostname => binary(),
+        force_tls => boolean(),
+        force_auth => boolean()
+    }.
 
 
 
@@ -40,9 +52,10 @@
 
 
 %% @doc
-send(#nkmail_msg{debug=Debug}=Msg, #nkmail_provider{config=Config}=Provider) ->
+send(#nkmail_msg{debug=Debug}=Msg, Provider) ->
     Mail = make_msg(Msg, Provider),
-    Opts = make_send_opts(maps:to_list(Config), []),
+    Config = maps:to_list(maps:get(config, Provider, #{})),
+    Opts = make_send_opts(Config, []),
     case gen_smtp_client:send_blocking(Mail, Opts) of
         <<"2.0.0 OK", _/binary>> = Reply ->
             case Debug of
@@ -58,28 +71,24 @@ send(#nkmail_msg{debug=Debug}=Msg, #nkmail_provider{config=Config}=Provider) ->
 
 
 %% @doc
-make_msg(#nkmail_msg{from=MsgFrom}=Msg, #nkmail_provider{from=ProvFrom}) ->
+make_msg(#nkmail_msg{from=MsgFrom}=Msg, #{from:=ProvFrom}) ->
     case MsgFrom of
-        {_, _} ->
-            do_make_msg(Msg);
         undefined ->
-            {_, _} = ProvFrom,
-            do_make_msg(Msg#nkmail_msg{from=ProvFrom})
+            do_make_msg(Msg#nkmail_msg{from=ProvFrom});
+        _ ->
+            do_make_msg(Msg)
     end.
 
 
 %% @doc
+-spec parse_provider(map()) ->
+    {ok, nkmail:provider()} | {error, term()} | continue.
+
 parse_provider(Data) ->
     case nklib_syntax:parse(Data, #{class=>atom}) of
         {ok, #{class:=smtp}, _} ->
             case nklib_syntax:parse(Data, provider_syntax()) of
-                {ok, #{id:=Id, class:=smtp, from:=From} = Parsed, _} ->
-                    Provider = #nkmail_provider{
-                        id = Id,
-                        class = smtp,
-                        from = From,
-                        config = maps:get(config, Parsed, #{})
-                    },
+                {ok, Provider, _} ->
                     {ok, Provider};
                 {error, Error} ->
                     {error, Error}
@@ -94,7 +103,7 @@ provider_syntax() ->
     #{
         id => binary,
         class => atom,
-        from => fun nkmail_api_syntax:parse_msg_fun/2,
+        from => fun nkmail_util:parse_msg_fun/2,
         config => #{
             relay => binary,
             port => integer,
@@ -103,11 +112,10 @@ provider_syntax() ->
             retries => {integer, 0, 10},
             hostname => binary,
             force_tls => boolean,
-            force_ath => boolean,
-            '__mandatory' => [relay]
-
+            force_auth => boolean
         },
-        '__mandatory' => [id, class, from, config]
+        '__defaults' => #{config => #{}},
+        '__mandatory' => [id, from]
     }.
 
 
@@ -118,33 +126,32 @@ provider_syntax() ->
 %% @private
 do_make_msg(#nkmail_msg{attachments=[]}=Msg) ->
     #nkmail_msg{
-        from = {FromDesc, FromUrl},
+        from = From,
         to = To,
         subject = Subject,
         content_type = CT,
         body = Body
     } = Msg,
-    ToUrls = [ToUrl || {_, ToUrl} <- To],
     case CT of
         <<"text/plain">> ->
             Mail = list_to_binary([
                 "Subject: ", Subject, "\r\n",
-                "From: ", FromDesc, " <", FromUrl, ">\r\n",
-                [["To: ",   ToDesc, " <", ToUrl, ">\r\n"] || {ToDesc, ToUrl} <- To],
+                "From: ", From, "\r\n",
+                [["To: ", ToSingle, "\r\n"] || ToSingle <- To],
                 "\r\n",
                 Body
             ]),
-            {FromUrl, ToUrls, Mail};
+            {nkmail_util:get_url(From), nkmail_util:get_urls(To), Mail};
         _ ->
             [CT1, CT2] = binary:split(CT, <<"/">>),
             Mime = {
                 CT1,
                 CT2,
                     [
-                        {<<"From">>, <<FromDesc/binary, " <", FromUrl/binary, ">">>},
+                        {<<"From">>, From},
                         {<<"Subject">>, Subject}
                     ] ++
-                    [{<<"To">>, <<ToDesc/binary, " <", ToUrl/binary, ">">>} || {ToDesc, ToUrl} <- To],
+                    [{<<"To">>, ToSingle} || ToSingle <- To],
                 [
                     % If we select 7bit, mimemail does not change the message
                     % If we select quoted-printable, it uses some config
@@ -156,19 +163,18 @@ do_make_msg(#nkmail_msg{attachments=[]}=Msg) ->
                 Body
             },
             Mail = mimemail:encode(Mime),
-            {FromUrl, ToUrls, Mail}
+            {nkmail_util:get_url(From), nkmail_util:get_urls(To), Mail}
     end;
 
 do_make_msg(Msg) ->
     #nkmail_msg{
-        from = {FromDesc, FromUrl},
+        from = From,
         to = To,
         subject = Subject,
         content_type = CT,
         body = Body,
         attachments = Attachments
     } = Msg,
-    ToUrls = [ToUrl || {_, ToUrl} <- To],
     Attachs = get_attachments(Attachments, []),
     [CT1, CT2] = binary:split(CT, <<"/">>),
     MimeBody = {CT1, CT2, [], [], Body},
@@ -176,15 +182,15 @@ do_make_msg(Msg) ->
         <<"multipart">>,
         <<"mixed">>,
             [
-                {<<"From">>, <<FromDesc/binary, " <", FromUrl/binary, ">">>},
+                {<<"From">>, From},
                 {<<"Subject">>, Subject}
             ] ++
-            [{<<"To">>, <<ToDesc/binary, " <", ToUrl/binary, ">">>} || {ToDesc, ToUrl} <- To],
+            [{<<"To">>, ToSingle} || ToSingle <- To],
         [],
         [MimeBody | Attachs]
     },
     Mail = mimemail:encode(MimeMail),
-    {FromUrl, ToUrls, Mail}.
+    {nkmail_util:get_url(From), nkmail_util:get_urls(To), Mail}.
 
 
 %% @private

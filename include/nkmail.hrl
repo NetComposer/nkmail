@@ -30,14 +30,6 @@
 %% Records
 %% ===================================================================
 
--record(nkmail_provider, {
-    id :: nkmail:provider_id(),
-    class :: nkmail:provider_class(),           % smtp
-    from :: {binary(), binary()} | undefined,
-    config :: term()
-}).
-
-
 -record(nkmail_msg, {
     provider_id :: nkmail:provider_id(),
     from :: {binary(), binary()} | undefined,

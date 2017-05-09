@@ -25,8 +25,7 @@
 -behaviour(application).
 
 -export([start/0, start/2, stop/1]).
--export([get/1, get/2, put/2, del/1, get_provider/1]).
--export([get_env/1, get_env/2, set_env/2]).
+-export([get/1, get/2, put/2, del/1]).
 
 -include("nkmail.hrl").
 -include_lib("nklib/include/nklib.hrl").
@@ -52,14 +51,10 @@ start() ->
 
 %% @private OTP standard start callback
 start(_Type, _Args) ->
-    ProvSyntax = nkmail_api_syntax:provider_syntax(),
-    Syntax = #{
-        providers => {list, ProvSyntax}
-    },
+    Syntax = #{providers => {list, map}},
     case nklib_config:load_env(?APP, Syntax) of
         {ok, _} ->
             {ok, Vsn} = application:get_key(?APP, vsn),
-            set_providers(),
             lager:info("NkMAIL v~s is starting", [Vsn]),
             {ok, Pid} = nkmail_sup:start_link(),
             {ok, Pid};
@@ -74,24 +69,6 @@ stop(_) ->
     ok.
 
 
-%% @private
-set_providers() ->
-    lists:foreach(
-        fun(#{id:=Id}=Provider) -> put({provider, Id}, Provider) end,
-        get(providers, [])).
-
-
-%% @doc
-get_provider(Id) ->
-    case get({provider, Id}) of
-        undefined ->
-            not_found;
-        #{}=Provider ->
-            {ok, Provider}
-    end.
-
-
-
 %% Configuration access
 get(Key) ->
     nklib_config:get(?APP, Key).
@@ -104,26 +81,6 @@ put(Key, Val) ->
 
 del(Key) ->
     nklib_config:del(?APP, Key).
-
-
-
-%% @private
-get_env(Key) ->
-    get_env(Key, undefined).
-
-
-%% @private
-get_env(Key, Default) ->
-    case application:get_env(?APP, Key) of
-        undefined -> Default;
-        {ok, Value} -> Value
-    end.
-
-
-%% @private
-set_env(Key, Value) ->
-    application:set_env(?APP, Key, Value).
-
 
 
 

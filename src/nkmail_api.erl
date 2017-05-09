@@ -41,7 +41,7 @@ cmd('', send, #nkapi_req{tid=TId, data=Msg}, #{srv_id:=SrvId}=State) ->
     Self = self(),
     spawn_link(
         fun() ->
-            Reply = nkmail:send(SrvId, Msg),
+            Reply = nkmail:send(SrvId, Msg#{debug=>true}),
             nkapi_server:reply(Self, TId, Reply)
         end),
     {ack, State};

@@ -23,8 +23,8 @@
 -module(nkmail).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([send/2]).
--export_type([mail_msg/0, provider_id/0, provider_class/0]).
+-export([send/2, parse_provider/2, parse_msg/1, unparse_msg/1]).
+-export_type([provider/0, msg/0, provider_id/0, provider_class/0]).
 -include("nkmail.hrl").
 
 
@@ -35,7 +35,17 @@
 -type provider_id() :: term().
 -type provider_class() :: atom().
 
--type mail_msg() ::
+-type provider() ::
+    #{
+        id => provider_id(),
+        class => provider_class(),
+        from => binary(),
+        config => map()
+    }.
+
+
+% Parsed into a #nkmail_msg{} record
+-type msg() ::
     #{
         provider_id => provider_id(),
         from => binary(),           % Optional, can be "a@a.com" or "Name <a@a.com>"
@@ -55,7 +65,7 @@
 
 
 %% @doc Sends a mail message
--spec send(nkservice:id(), #nkmail_msg{} | mail_msg()) ->
+-spec send(nkservice:id(), msg() | #nkmail_msg{}) ->
     {ok, Meta::map()} | {error, term()}.
 
 send(Srv, #nkmail_msg{provider_id=ProvId}=Mail) ->
@@ -72,7 +82,7 @@ send(Srv, #nkmail_msg{provider_id=ProvId}=Mail) ->
     end;
 
 send(Srv, Msg) ->
-    case nkmail_util:parse_msg(Msg) of
+    case parse_msg(Msg) of
         {ok, #nkmail_msg{}=Mail} ->
             send(Srv, Mail);
         {error, Error} ->
@@ -80,6 +90,38 @@ send(Srv, Msg) ->
     end.
 
 
+%% @doc Parses a message
+-spec parse_msg(map()) ->
+    {ok, #nkmail_msg{}} | {error, term()}.
 
+parse_msg(Map) ->
+    nkmail_util:parse_msg(Map).
+
+
+%% @doc
+-spec unparse_msg(#nkmail_msg{}) ->
+    {ok, map()} | {error, term()}.
+
+unparse_msg(#nkmail_msg{}=Msg) ->
+    nkmail_util:unparse_msg(Msg).
+
+
+
+%% @doc Parses a provider
+-spec parse_provider(nkservice:id(), map()) ->
+    {ok, provider()} | {error, term()}.
+
+parse_provider(Srv, Map) ->
+    case nkservice_srv:get_srv_id(Srv) of
+        {ok, SrvId} ->
+            case SrvId:nkmail_parse_provider(Map) of
+                {ok, Provider} ->
+                    {ok, Provider};
+                {error, Error} ->
+                    {error, Error}
+            end;
+        not_found ->
+            {error, service_not_found}
+    end.
 
 

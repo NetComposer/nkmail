@@ -60,7 +60,7 @@ nkmail_parse_provider(Data) ->
 
 
 %% @private
-nkmail_send(_SrvId, #nkmail_provider{class=smtp}=Provider, Msg) ->
+nkmail_send(_SrvId, #{class:=smtp}=Provider, Msg) ->
     nkmail_smtp_client:send(Msg, Provider);
 
 nkmail_send(_SrvId, _Provider, _Msg) ->
