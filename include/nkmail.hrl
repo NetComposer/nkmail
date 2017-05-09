@@ -43,3 +43,4 @@
 
 -endif.
 
+-define(DOMAIN_MAIL, <<"mail">>).

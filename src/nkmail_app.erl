@@ -25,6 +25,7 @@
 -behaviour(application).
 
 -export([start/0, start/2, stop/1]).
+-export([get_providers/0, get_provider/1, get_provider_ids/0, put_provider/1]).
 -export([get/1, get/2, put/2, del/1]).
 
 -include("nkmail.hrl").
@@ -67,6 +68,27 @@ start(_Type, _Args) ->
 %% @private OTP standard stop callback
 stop(_) ->
     ok.
+
+
+%% #doc
+get_providers() ->
+    get(providers).
+
+
+%% #doc
+get_provider(Id) ->
+    get({provider, nklib_util:to_binary(Id)}, not_found).
+
+
+%% @doc
+put_provider(#{id:=Id}=Provider) ->
+    put(provider_ids, [Id|get_provider_ids()]),
+    put({provider, Id}, Provider).
+
+
+%% #doc
+get_provider_ids() ->
+    get(provider_ids, []).
 
 
 %% Configuration access

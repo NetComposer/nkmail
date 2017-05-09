@@ -59,12 +59,12 @@ service_init(_Service, #{id:=SrvId}=State) ->
             case nkmail:parse_provider(SrvId, Data) of
                 {ok, #{id:=Id}=Provider} ->
                     lager:info("NkMAIL: loading provider ~s", [Id]),
-                    nkmail_app:put({provider, Id}, Provider);
+                    nkmail_app:put_provider(Provider);
                 {error, Error} ->
                     lager:warning("NkMAIL: could not load provider ~p: ~p", [Data, Error])
             end
         end,
-        nkmail_app:get(providers, [])),
+        nkmail_app:get_providers()),
     {ok, State}.
 
 
@@ -90,7 +90,7 @@ api_error(_)                            -> continue.
     {ok, nkmail:provider()} | {error, term()}.
 
 nkmail_get_provider(_SrvId, Id) ->
-    case nkmail_app:get({provider, nklib_util:to_binary(Id)}) of
+    case nkmail_app:get_provider(Id) of
         not_found ->
             {error, {provider_not_found, Id}};
         Provider ->
