@@ -44,3 +44,4 @@
 -endif.
 
 -define(DOMAIN_MAIL, <<"mail">>).
+-define(DOMAIN_MAIL_CONFIG, <<"mail.config">>).
