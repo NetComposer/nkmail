@@ -72,7 +72,7 @@ stop(_) ->
 
 %% #doc
 get_providers() ->
-    get(providers).
+    get(providers, []).
 
 
 %% #doc
