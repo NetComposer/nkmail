@@ -45,24 +45,29 @@
 %% ===================================================================
 
 
-
 %% @doc
 -spec create(nkservice:id(), nkdomain:id(), nkdomain:name(), map()) ->
-    {ok, nkdomain:obj_id(), nkdomain:path(), pid()} | {error, term()}.
+    {ok, nkdomain_obj_lib:make_and_create_reply(), pid()} | {error, term()}.
 
 create(Srv, Parent, Name, Provider) ->
-    Provider2 = Provider#{id=>Name},
-    case nkmail:parse_provider(Srv, Provider2) of
-        {ok, Provider3} ->
-            Opts = #{
-                obj_name => Name,
-                type_obj => Provider3,
-                subtype => <<"config">>
-            },
-            nkdomain_obj_lib:make_and_create(Srv, Parent, ?DOMAIN_MAIL_CONFIG, Opts);
-        {error, Error} ->
-            {error, Error}
-    end.
+    Opts = #{
+        obj_name => Name,
+        type_obj => Provider,
+        subtype => <<"config">>
+    },
+    nkdomain_obj_lib:make_and_create(Srv, Parent, ?DOMAIN_MAIL_CONFIG, Opts).
+%%    Provider2 = Provider#{id=>Name},
+%%    case nkmail:parse_provider(Srv, Provider2) of
+%%        {ok, Provider3} ->
+%%            Opts = #{
+%%                obj_name => Name,
+%%                type_obj => Provider3,
+%%                subtype => <<"config">>
+%%            },
+%%            nkdomain_obj_lib:make_and_create(Srv, Parent, ?DOMAIN_MAIL_CONFIG, Opts);
+%%        {error, Error} ->
+%%            {error, Error}
+%%    end.
 
 
 %% @doc
@@ -106,8 +111,14 @@ object_mapping() ->
 
 
 %% @private
-object_parse(_SrvId, _Mode, _Obj) ->
-    any.
+object_parse(SrvId, _Mode, Obj) ->
+    #{path:=Path, ?DOMAIN_MAIL_CONFIG:=Config} = Obj,
+    case nkmail:parse_provider(SrvId, Config#{id=>Path}) of
+        {ok, Provider} ->
+            {type_obj, Provider};
+        {error, Error} ->
+            {error, Error}
+    end.
 
 
 %% @private
