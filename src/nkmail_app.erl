@@ -94,8 +94,8 @@ get_provider_ids() ->
 
 %% @doc Register our types
 register_types() ->
-    ok = nkdomain_types:register(nkmail_mail_config_obj),
-    ok = nkdomain_types:register(nkmail_mail_obj).
+    ok = nkdomain_all_types:register(nkmail_mail_config_obj),
+    ok = nkdomain_all_types:register(nkmail_mail_obj).
 
 
 %% Configuration access
