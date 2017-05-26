@@ -22,13 +22,13 @@
 
 -module(nkmail_api_syntax).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
--export([syntax/3]).
+-export([syntax/2]).
 
 %% ===================================================================
 %% Syntax
 %% ===================================================================
 
-syntax('', send, Syntax) ->
+syntax(<<"send">>, Syntax) ->
     Syntax#{
         provider => binary,
         from => binary,
@@ -47,7 +47,7 @@ syntax('', send, Syntax) ->
         '__mandatory' => [provider, to]
     };
 
-syntax(_Sub, _Cmd, Syntax) ->
+syntax(_Cmd, Syntax) ->
 	Syntax.
 
 

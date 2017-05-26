@@ -22,9 +22,9 @@
 
 -module(nkmail_api).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
--export([cmd/4]).
+-export([cmd/3]).
 
--include_lib("nkapi/include/nkapi.hrl").
+-include_lib("nkservice/include/nkservice.hrl").
 
 
 %% ===================================================================
@@ -37,8 +37,9 @@
 %% ===================================================================
 
 
-cmd('', send, #nkapi_req{tid=TId, data=Msg}, #{srv_id:=SrvId}=State) ->
+cmd(<<"send">>, #nkreq{data=Msg, srv_id=SrvId}=Req, State) ->
     Self = self(),
+    TId = nkapi_server:get_tid(Req),
     spawn_link(
         fun() ->
             Reply = nkmail:send(SrvId, Msg#{debug=>true}),
@@ -46,7 +47,7 @@ cmd('', send, #nkapi_req{tid=TId, data=Msg}, #{srv_id:=SrvId}=State) ->
         end),
     {ack, State};
 
-cmd(_Sub, _Cmd, _Data, State) ->
+cmd(_Cmd, _Req, State) ->
 	{error, not_implemented, State}.
 
 

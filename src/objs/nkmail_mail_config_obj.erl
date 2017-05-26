@@ -26,7 +26,7 @@
 
 -export([create/3, load_providers/0]).
 -export([object_get_info/0, object_mapping/0, object_parse/3,
-         object_api_syntax/3, object_api_allow/4, object_api_cmd/4]).
+         object_api_syntax/2, object_api_allow/3, object_api_cmd/3]).
 
 -include("nkmail.hrl").
 -include_lib("nkapi/include/nkapi.hrl").
@@ -117,17 +117,17 @@ object_parse(SrvId, _Mode, Obj) ->
 
 
 %% @private
-object_api_syntax(Sub, Cmd, Syntax) ->
-    nkdomain_obj_syntax:syntax(Sub, Cmd, ?DOMAIN_MAIL_CONFIG, Syntax).
+object_api_syntax(Cmd, Syntax) ->
+    nkdomain_obj_syntax:syntax(Cmd, ?DOMAIN_MAIL_CONFIG, Syntax).
 
 
 %% @private
-object_api_allow(_Sub, _Cmd, _Data, State) ->
+object_api_allow(_Cmd, _Req, State) ->
     {true, State}.
 
 
-object_api_cmd(Sub, Cmd, Req, State) ->
-    nkdomain_obj_api:api(Sub, Cmd, Req, ?DOMAIN_MAIL_CONFIG, State).
+object_api_cmd(Cmd, Req, State) ->
+    nkdomain_obj_api:api(Cmd, ?DOMAIN_MAIL_CONFIG, Req, State).
 
 
 
