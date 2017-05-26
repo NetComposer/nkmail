@@ -24,7 +24,7 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
 -export([plugin_deps/0, service_init/2]).
--export([api_error/1]).
+-export([error/1]).
 -export([nkmail_get_provider/2, nkmail_parse_provider/1, nkmail_send/3]).
 -export([service_api_cmd/2, service_api_syntax/2]).
 
@@ -73,10 +73,10 @@ service_init(_Service, #{id:=SrvId}=State) ->
 %% ===================================================================
 
 %% @doc
-api_error({smtp_error, Error})          -> {"SMTP error: ~p", [Error]};
-api_error(invalid_provider_class )      -> "Invalid provider class";
-api_error({provider_not_found, Id})     -> {"Provider not found: ~p", [Id]};
-api_error(_)                            -> continue.
+error({smtp_error, Error})          -> {"SMTP error: ~p", [Error]};
+error(invalid_provider_class )      -> "Invalid provider class";
+error({provider_not_found, Id})     -> {"Provider not found: ~p", [Id]};
+error(_)                            -> continue.
 
 
 
@@ -111,7 +111,7 @@ nkmail_parse_provider(_Provider) ->
     ok | {error, term()}.
 
 nkmail_send(_SrvId, _Provider, _Msg) ->
-    error(invalid_mail_provider).
+    erlang:error(invalid_mail_provider).
 
 
 %% ===================================================================
