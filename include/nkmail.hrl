@@ -43,5 +43,5 @@
 
 -endif.
 
--define(DOMAIN_MAIL, <<"mail">>).
--define(DOMAIN_MAIL_CONFIG, <<"mail.config">>).
+-define(MAIL_MAIL, <<"mail">>).
+-define(MAIL_CONFIG, <<"mail.config">>).

@@ -52,7 +52,7 @@
 %% @private
 object_get_info() ->
     #{
-        type => ?DOMAIN_MAIL
+        type => ?MAIL_MAIL
     }.
 
 

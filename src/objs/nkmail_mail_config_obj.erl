@@ -29,6 +29,7 @@
          object_api_syntax/2, object_api_allow/3, object_api_cmd/3]).
 
 -include("nkmail.hrl").
+-include_lib("nkdomain/include/nkdomain.hrl").
 -include_lib("nkapi/include/nkapi.hrl").
 
 -define(LLOG(Type, Txt, Args),
@@ -74,7 +75,7 @@ load_providers() ->
     lists:foreach(
         fun(Id) ->
             Provider = nkmail_app:get_provider(Id),
-            case create(root, Id, #{type=>?DOMAIN_MAIL_CONFIG, ?DOMAIN_MAIL_CONFIG=>Provider}) of
+            case create(root, Id, #{type=>?DOMAIN_CONFIG, ?MAIL_CONFIG=>Provider}) of
                 {ok, ObjId, _Path, _Pid} ->
                     ?LLOG(info, "Loaded provider ~s (~s)", [Id, ObjId]);
                 {error, Error} ->
@@ -96,7 +97,8 @@ load_providers() ->
 %% @private
 object_get_info() ->
     #{
-        type => ?DOMAIN_MAIL_CONFIG
+        type => ?DOMAIN_CONFIG,
+        subtype => ?MAIL_CONFIG
     }.
 
 
@@ -107,7 +109,7 @@ object_mapping() ->
 
 %% @private
 object_parse(SrvId, _Mode, Obj) ->
-    #{path:=Path, ?DOMAIN_MAIL_CONFIG:=Config} = Obj,
+    #{path:=Path, ?MAIL_CONFIG:=Config} = Obj,
     case nkmail:parse_provider(SrvId, Config#{id=>Path}) of
         {ok, Provider} ->
             {type_obj, Provider};
@@ -118,7 +120,7 @@ object_parse(SrvId, _Mode, Obj) ->
 
 %% @private
 object_api_syntax(Cmd, Syntax) ->
-    nkdomain_obj_syntax:syntax(Cmd, ?DOMAIN_MAIL_CONFIG, Syntax).
+    nkdomain_obj_syntax:syntax(Cmd, ?MAIL_CONFIG, Syntax).
 
 
 %% @private
@@ -127,7 +129,7 @@ object_api_allow(_Cmd, _Req, State) ->
 
 
 object_api_cmd(Cmd, Req, State) ->
-    nkdomain_obj_api:api(Cmd, ?DOMAIN_MAIL_CONFIG, Req, State).
+    nkdomain_obj_api:api(Cmd, ?MAIL_CONFIG, Req, State).
 
 
 
