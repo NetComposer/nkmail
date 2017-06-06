@@ -42,6 +42,3 @@
 }).
 
 -endif.
-
--define(MAIL_MAIL, <<"mail">>).
--define(MAIL_CONFIG, <<"mail.config">>).
