@@ -23,9 +23,34 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -compile(export_all).
 
+-include_lib("nkservice/include/nkservice.hrl").
+
+-define(SRV, nkmail_test).
+-define(WS, "ws:all:9010/nkmail").
+
+
+%% @doc Starts the service
+start() ->
+    Spec = #{
+        callback => ?MODULE,
+        api_server => ?WS
+    },
+    nkservice:start(?SRV, Spec).
+
+
+%% @doc Stops the service
+stop() ->
+    nkservice:stop(?SRV).
+
+
 
 login() ->
-    nkdomain_sample:login().
+    Fun = fun ?MODULE:api_client_fun/2,
+    Login = #{
+        user => <<"test">>
+    },
+    {ok, _Reply, _Pid} = nkapi_client:start(?SRV, ?WS, Login, Fun, #{}, nkmail_test_login).
+
 
 
 send1() ->
@@ -36,7 +61,7 @@ send1() ->
         subject => "sub2",
         body => "msg2"
     },
-    nkdomain_sample:cmd(nkmail, send, Msg).
+    send(Msg).
 
 
 
@@ -66,7 +91,7 @@ send2() ->
             }
         ]
     },
-    nkdomain_sample:cmd(nkmail, send, Msg).
+    send(Msg).
 
 
 send3() ->
@@ -76,7 +101,7 @@ send3() ->
         subject => "sub2",
         body => "msg2"
     },
-    nkdomain_sample:cmd(nkmail, send, Msg).
+    send(Msg).
 
 
 
@@ -110,7 +135,68 @@ prov_update(Name) ->
     nkdomain_sample:cmd('mail.config', update, Data).
 
 
+%% ===================================================================
+%% Util
+%% ===================================================================
+
+
+get_client() ->
+    [{_, Pid}|_] = nkapi_client:get_all(),
+    Pid.
+
+
+send(Data) ->
+    nkapi_client:cmd(get_client(), <<"nkmail/send">>, Data).
+
+
+%% ===================================================================
+%% Client fun
+%% ===================================================================
+
+
+api_client_fun(#nkreq{cmd = <<"event">>, data=Event}, State) ->
+    lager:notice("CLIENT event ~p", [lager:pr(Event, nkevent)]),
+    {ok, State};
+
+api_client_fun(#nkreq{cmd = <<"nkapi_test_login">>, data=Data}, State) ->
+    {ok, #{client=>Data}, State};
+
+api_client_fun(_Req, State) ->
+    % lager:error("API REQ: ~p", [lager:pr(_Req, ?MODULE)]),
+    {error, not_implemented, State}.
 
 
 
+%% ===================================================================
+%% API callbacks
+%% ===================================================================
 
+plugin_deps() ->
+    [nkapi].
+
+
+
+%% @doc
+service_api_syntax(Syntax, #nkreq{cmd = <<"nkmail_test_login">>}=Req) ->
+    {Syntax#{user=>binary}, Req};
+
+service_api_syntax(_Syntax, _Req) ->
+    continue.
+
+
+%% @doc
+service_api_allow(_Req, State) ->
+    {true, State}.
+
+
+%% @doc Called on any command
+service_api_cmd(#nkreq{cmd = <<"nkmail_test_login">>, session_id=SessId, data=Data}, State) ->
+    case Data of
+        #{user:=User} ->
+            {login, #{sess_id=>SessId}, User, #{}, State};
+        _ ->
+            {error, invalid_user, State}
+    end;
+
+service_api_cmd(_Req, _State) ->
+    continue.

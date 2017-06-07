@@ -23,7 +23,7 @@
 -module(nkmail_smtp_client).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([send/2]).
--export([parse_provider/1]).
+-export([parse_provider/2]).
 -export_type([provider_config/0]).
 
 -include("nkmail.hrl").
@@ -81,11 +81,11 @@ make_msg(#nkmail_msg{from=MsgFrom}=Msg, #{from:=ProvFrom}) ->
 
 
 %% @doc
--spec parse_provider(map()) ->
+-spec parse_provider(map(), nklib_syntax:parse_opts()) ->
     {ok, nkmail:provider()} | {error, term()} | continue.
 
-parse_provider(Data) ->
-    case nklib_syntax:parse(Data, #{class=>atom}) of
+parse_provider(Data, ParseOpts) ->
+    case nklib_syntax:parse(Data, #{class=>atom}, ParseOpts) of
         {ok, #{class:=smtp}, _} ->
             case nklib_syntax:parse(Data, provider_syntax()) of
                 {ok, Provider, _} ->
@@ -101,7 +101,7 @@ parse_provider(Data) ->
 %% @private
 provider_syntax() ->
     #{
-        id => binary,
+        id => ignore,
         class => atom,
         from => fun nkmail_util:parse_msg_fun/2,
         config => #{
@@ -115,7 +115,7 @@ provider_syntax() ->
             force_auth => boolean
         },
         '__defaults' => #{config => #{}},
-        '__mandatory' => [id, from]
+        '__mandatory' => [class, from]
     }.
 
 

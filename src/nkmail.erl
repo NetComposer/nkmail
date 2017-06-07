@@ -23,7 +23,7 @@
 -module(nkmail).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([send/2, parse_provider/2, parse_msg/1, unparse_msg/1]).
+-export([send/2, parse_provider/2, parse_provider/3, parse_msg/1, unparse_msg/1]).
 -export_type([provider/0, msg/0, provider_id/0, provider_class/0]).
 -include("nkmail.hrl").
 
@@ -37,7 +37,6 @@
 
 -type provider() ::
     #{
-        id => provider_id(),
         class => provider_class(),
         from => binary(),
         config => map()
@@ -106,15 +105,21 @@ unparse_msg(#nkmail_msg{}=Msg) ->
     nkmail_util:unparse_msg(Msg).
 
 
-
 %% @doc Parses a provider
 -spec parse_provider(nkservice:id(), map()) ->
     {ok, provider()} | {error, term()}.
 
 parse_provider(Srv, Map) ->
+    parse_provider(Srv, Map, #{}).
+
+
+-spec parse_provider(nkservice:id(), map(), nklib_syntax:parse_opts()) ->
+    {ok, provider()} | {error, term()}.
+
+parse_provider(Srv, Map, ParseOpts) ->
     case nkservice_srv:get_srv_id(Srv) of
         {ok, SrvId} ->
-            case SrvId:nkmail_parse_provider(Map) of
+            case SrvId:nkmail_parse_provider(Map, ParseOpts) of
                 {ok, Provider} ->
                     {ok, Provider};
                 {error, Error} ->

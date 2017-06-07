@@ -24,7 +24,7 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
 -export([plugin_deps/0]).
--export([nkmail_parse_provider/1, nkmail_send/3]).
+-export([nkmail_parse_provider/2, nkmail_send/3]).
 
 
 -include("nkmail.hrl").
@@ -55,8 +55,8 @@ plugin_deps() ->
 %% ===================================================================
 
 %% @private
-nkmail_parse_provider(Data) ->
-    nkmail_smtp_client:parse_provider(Data).
+nkmail_parse_provider(Data, ParseOpts) ->
+    nkmail_smtp_client:parse_provider(Data, ParseOpts).
 
 
 %% @private

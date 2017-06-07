@@ -25,8 +25,7 @@
 -behaviour(application).
 
 -export([start/0, start/2, stop/1]).
--export([get_providers/0, get_provider/1, get_provider_ids/0, put_provider/1]).
--export([register_types/0]).
+-export([get_provider_ids/0, get_provider/1, put_provider/2]).
 -export([get/1, get/2, put/2, del/1]).
 
 -include("nkmail.hrl").
@@ -71,9 +70,10 @@ stop(_) ->
     ok.
 
 
+
 %% #doc
-get_providers() ->
-    get(providers, []).
+get_provider_ids() ->
+    get(provider_ids, []).
 
 
 %% #doc
@@ -82,20 +82,10 @@ get_provider(Id) ->
 
 
 %% @doc
-put_provider(#{id:=Id}=Provider) ->
+put_provider(Id, Provider) ->
     put(provider_ids, [Id|get_provider_ids()]),
     put({provider, Id}, Provider).
 
-
-%% #doc
-get_provider_ids() ->
-    get(provider_ids, []).
-
-
-%% @doc Register our types
-register_types() ->
-    ok = nkdomain_all_types:register(nkmail_mail_config_obj),
-    ok = nkdomain_all_types:register(nkmail_mail_obj).
 
 
 %% Configuration access

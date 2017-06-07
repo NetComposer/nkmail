@@ -25,7 +25,7 @@
 
 -export([plugin_deps/0, service_init/2]).
 -export([error/1]).
--export([nkmail_get_provider/2, nkmail_parse_provider/1, nkmail_send/3]).
+-export([nkmail_get_provider/2, nkmail_parse_provider/2, nkmail_send/3]).
 -export([service_api_cmd/2, service_api_syntax/2]).
 
 -include("nkmail.hrl").
@@ -54,16 +54,19 @@ plugin_deps() ->
 service_init(_Service, #{id:=SrvId}=State) ->
     % Loads app providers
     lists:foreach(
-        fun(Data) ->
-            case nkmail:parse_provider(SrvId, Data) of
-                {ok, #{id:=Id}=Provider} ->
-                    lager:info("NkMAIL: loading provider ~s", [Id]),
-                    nkmail_app:put_provider(Provider);
-                {error, Error} ->
-                    lager:warning("NkMAIL: could not load provider ~p: ~p", [Data, Error])
-            end
+        fun
+            (#{id:=Id}=Data) ->
+                case nkmail:parse_provider(SrvId, Data) of
+                    {ok, Provider} ->
+                        lager:info("NkMAIL: loading provider ~s", [Id]),
+                        nkmail_app:put_provider(nklib_util:to_binary(Id), Provider);
+                    {error, Error} ->
+                        lager:warning("NkMAIL: could not load provider ~p: ~p", [Data, Error])
+                end;
+            (Data) ->
+                lager:warning("NkMAIL: invalid provider: ~p", [Data])
         end,
-        nkmail_app:get_providers()),
+        nkmail_app:get(providers, [])),
     {ok, State}.
 
 
@@ -99,10 +102,10 @@ nkmail_get_provider(_SrvId, Id) ->
 
 
 %% @doc Parses a mail provider
--spec nkmail_parse_provider(map()) ->
+-spec nkmail_parse_provider(map(), nklib_syntax:parse_opts()) ->
     {ok, nkmail:provider()} | {error, term()}.
 
-nkmail_parse_provider(_Provider) ->
+nkmail_parse_provider(_Provider, _Opts) ->
     {error, invalid_provider_class}.
 
 
@@ -119,16 +122,40 @@ nkmail_send(_SrvId, _Provider, _Msg) ->
 %% ===================================================================
 
 %% @doc
-service_api_syntax(Syntax, #nkreq{cmd = <<"nkmail", Cmd/binary>>}=Req) ->
-    {nkmail_api_syntax:syntax(Cmd, Syntax), Req};
+service_api_syntax(Syntax, #nkreq{cmd = <<"nkmail/send">>}=Req) ->
+    Syntax2 = Syntax#{
+        provider => binary,
+        from => binary,
+        to => binary,                   % Allows several (with comma)
+        subject => binary,
+        content_type => binary,
+        body => binary,
+        attachments =>
+        {list,
+         #{
+             name => binary,
+             content_type => binary,
+             body => base64,
+             '__mandatory' => [name, content_type, body]
+         }},
+        '__mandatory' => [provider, to]
+    },
+    {Syntax2, Req};
 
 service_api_syntax(_Syntax, _Req) ->
     continue.
 
 
 %% @doc
-service_api_cmd(#nkreq{cmd = <<"nkmail", Cmd/binary>>}=Req, State) ->
-    nkmail_api:cmd(Cmd, Req, State);
+service_api_cmd(#nkreq{cmd = <<"nkmail/send">>, data=Msg, srv_id=SrvId}=Req, State) ->
+    Self = self(),
+    TId = nkapi_server:get_tid(Req),
+    spawn_link(
+        fun() ->
+            Reply = nkmail:send(SrvId, Msg#{debug=>true}),
+            nkapi_server:reply(Self, TId, Reply)
+        end),
+    {ack, State};
 
 service_api_cmd(_Req, _State) ->
     continue.
