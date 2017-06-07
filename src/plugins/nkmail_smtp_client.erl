@@ -86,9 +86,9 @@ make_msg(#nkmail_msg{from=MsgFrom}=Msg, #{from:=ProvFrom}) ->
 
 parse_provider(Data, ParseOpts) ->
     case nklib_syntax:parse(Data, #{class=>atom}, ParseOpts) of
-        {ok, #{class:=smtp}, _} ->
+        {ok, #{class:=smtp}, UnknownFields} ->
             case nklib_syntax:parse(Data, provider_syntax()) of
-                {ok, Provider, _} ->
+                {ok, Provider, UnknownFields} ->
                     {ok, Provider};
                 {error, Error} ->
                     {error, Error}

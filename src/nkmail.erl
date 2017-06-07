@@ -114,14 +114,14 @@ parse_provider(Srv, Map) ->
 
 
 -spec parse_provider(nkservice:id(), map(), nklib_syntax:parse_opts()) ->
-    {ok, provider()} | {error, term()}.
+    {ok, provider(), [binary()]} | {error, term()}.
 
 parse_provider(Srv, Map, ParseOpts) ->
     case nkservice_srv:get_srv_id(Srv) of
         {ok, SrvId} ->
             case SrvId:nkmail_parse_provider(Map, ParseOpts) of
-                {ok, Provider} ->
-                    {ok, Provider};
+                {ok, Provider, UnknownFields} ->
+                    {ok, Provider, UnknownFields};
                 {error, Error} ->
                     {error, Error}
             end;

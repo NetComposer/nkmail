@@ -103,7 +103,7 @@ nkmail_get_provider(_SrvId, Id) ->
 
 %% @doc Parses a mail provider
 -spec nkmail_parse_provider(map(), nklib_syntax:parse_opts()) ->
-    {ok, nkmail:provider()} | {error, term()}.
+    {ok, nkmail:provider(), [binary()]} | {error, term()}.
 
 nkmail_parse_provider(_Provider, _Opts) ->
     {error, invalid_provider_class}.
