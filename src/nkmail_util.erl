@@ -23,7 +23,7 @@
 -module(nkmail_util).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([parse_msg/1, unparse_msg/1, get_url/1, get_urls/1]).
+-export([parse_msg/1, unparse_msg/1, msg_syntax/0, get_url/1, get_urls/1]).
 -export([parse_msg_fun/2]).
 
 -include("nkmail.hrl").
