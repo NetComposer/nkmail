@@ -57,7 +57,7 @@ service_init(_Service, #{id:=SrvId}=State) ->
         fun
             (#{id:=Id}=Data) ->
                 case nkmail:parse_provider(SrvId, Data) of
-                    {ok, Provider} ->
+                    {ok, Provider, _} ->
                         lager:info("NkMAIL: loading provider ~s", [Id]),
                         nkmail_app:put_provider(nklib_util:to_binary(Id), Provider);
                     {error, Error} ->
