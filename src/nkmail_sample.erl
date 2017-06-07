@@ -105,36 +105,6 @@ send3() ->
 
 
 
-%%% DOMAIN
-
-prov_create(Name) ->
-    Data = #{
-        obj_name => Name,
-        'mail.config' => #{
-            class => smtp,
-            from => "test@test.com",
-            config => #{
-                relay => relay
-            }
-        }
-    },
-    nkdomain_sample:cmd('mail.config', create, Data).
-
-
-prov_update(Name) ->
-    Data = #{
-        id => list_to_binary(["/mail.configs/", nklib_util:to_binary(Name)]),
-        'mail.config' => #{
-            class => smtp,
-            from => "test@test.com",
-            config => #{
-                relay => relay
-            }
-        }
-    },
-    nkdomain_sample:cmd('mail.config', update, Data).
-
-
 %% ===================================================================
 %% Util
 %% ===================================================================
@@ -172,7 +142,7 @@ api_client_fun(_Req, State) ->
 %% ===================================================================
 
 plugin_deps() ->
-    [nkapi].
+    [nkapi, nkmail, nkmail_smtp_client].
 
 
 
