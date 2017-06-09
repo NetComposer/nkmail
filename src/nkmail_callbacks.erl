@@ -147,9 +147,8 @@ service_api_syntax(_Syntax, _Req) ->
 
 
 %% @doc
-service_api_cmd(#nkreq{cmd = <<"nkmail/send">>, data=Msg, srv_id=SrvId}=Req, State) ->
+service_api_cmd(#nkreq{cmd = <<"nkmail/send">>, data=Msg, srv_id=SrvId, tid=TId}, State) ->
     Self = self(),
-    TId = nkapi_server:get_tid(Req),
     spawn_link(
         fun() ->
             Reply = nkmail:send(SrvId, Msg#{debug=>true}),
