@@ -155,18 +155,18 @@ service_api_syntax(_Syntax, _Req) ->
 
 
 %% @doc
-service_api_allow(_Req, State) ->
-    {true, State}.
+service_api_allow(_Req) ->
+    true.
 
 
 %% @doc Called on any command
-service_api_cmd(#nkreq{cmd = <<"nkmail_test_login">>, session_id=SessId, data=Data}, State) ->
+service_api_cmd(#nkreq{cmd = <<"nkmail_test_login">>, session_id=SessId, data=Data}=Req) ->
     case Data of
         #{user:=User} ->
-            {login, #{sess_id=>SessId}, User, #{}, State};
+            {ok, #{sess_id=>SessId}, Req#nkreq{user_id=User}};
         _ ->
-            {error, invalid_user, State}
+            {error, invalid_user}
     end;
 
-service_api_cmd(_Req, _State) ->
+service_api_cmd(_Req) ->
     continue.
