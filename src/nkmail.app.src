@@ -4,6 +4,6 @@
     {modules, []},
     {registered, []},
     {mod, {nkmail_app, []}},
-    {applications, [nkservice, nkapi]},
+    {applications, [gen_smtp, nkservice, nkapi]},
     {env, []}
 ]}.
