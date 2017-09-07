@@ -67,23 +67,18 @@
 -spec send(nkservice:id(), msg() | #nkmail_msg{}) ->
     {ok, Meta::map()} | {error, term()}.
 
-send(Srv, #nkmail_msg{provider_id=ProvId}=Mail) ->
-    case nkservice_srv:get_srv_id(Srv) of
-        {ok, SrvId} ->
-            case SrvId:nkmail_get_provider(SrvId, ProvId) of
-                {ok, Provider} ->
-                    SrvId:nkmail_send(SrvId, Provider, Mail);
-                {error, Error} ->
-                    {error, Error}
-            end;
-        not_found ->
-            {error, service_not_found}
+send(SrvId, #nkmail_msg{provider_id=ProvId}=Mail) ->
+    case SrvId:nkmail_get_provider(SrvId, ProvId) of
+        {ok, Provider} ->
+            SrvId:nkmail_send(SrvId, Provider, Mail);
+        {error, Error} ->
+            {error, Error}
     end;
 
-send(Srv, Msg) ->
+send(SrvId, Msg) ->
     case parse_msg(Msg) of
         {ok, #nkmail_msg{}=Mail} ->
-            send(Srv, Mail);
+            send(SrvId, Mail);
         {error, Error} ->
             {error, Error}
     end.
@@ -116,17 +111,12 @@ parse_provider(Srv, Map) ->
 -spec parse_provider(nkservice:id(), map(), nklib_syntax:parse_opts()) ->
     {ok, provider(), [binary()]} | {error, term()}.
 
-parse_provider(Srv, Map, ParseOpts) ->
-    case nkservice_srv:get_srv_id(Srv) of
-        {ok, SrvId} ->
-            case SrvId:nkmail_parse_provider(Map, ParseOpts) of
-                {ok, Provider, UnknownFields} ->
-                    {ok, Provider, UnknownFields};
-                {error, Error} ->
-                    {error, Error}
-            end;
-        not_found ->
-            {error, service_not_found}
+parse_provider(SrvId, Map, ParseOpts) ->
+    case SrvId:nkmail_parse_provider(Map, ParseOpts) of
+        {ok, Provider, UnknownFields} ->
+            {ok, Provider, UnknownFields};
+        {error, Error} ->
+            {error, Error}
     end.
 
 
