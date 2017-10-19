@@ -26,7 +26,7 @@
 -export([plugin_deps/0, service_init/2]).
 -export([error/1]).
 -export([nkmail_get_provider/2, nkmail_parse_provider/2, nkmail_send/3]).
--export([service_api_cmd/1, service_api_syntax/2]).
+-export([service_api_cmd/2, service_api_syntax/3]).
 
 -include("nkmail.hrl").
 -include_lib("nkservice/include/nkservice.hrl").
@@ -122,7 +122,7 @@ nkmail_send(_SrvId, _Provider, _Msg) ->
 %% ===================================================================
 
 %% @doc
-service_api_syntax(Syntax, #nkreq{cmd = <<"nkmail/send">>}=Req) ->
+service_api_syntax(_Id, Syntax, #nkreq{cmd = <<"nkmail/send">>}=Req) ->
     Syntax2 = Syntax#{
         provider => binary,
         from => binary,
@@ -142,12 +142,12 @@ service_api_syntax(Syntax, #nkreq{cmd = <<"nkmail/send">>}=Req) ->
     },
     {Syntax2, Req};
 
-service_api_syntax(_Syntax, _Req) ->
+service_api_syntax(_Id, _Syntax, _Req) ->
     continue.
 
 
 %% @doc
-service_api_cmd(#nkreq{cmd = <<"nkmail/send">>, data=Msg, srv_id=SrvId, tid=TId}) ->
+service_api_cmd(_Id, #nkreq{cmd = <<"nkmail/send">>, data=Msg, srv_id=SrvId, tid=TId}) ->
     Self = self(),
     spawn_link(
         fun() ->
@@ -156,6 +156,6 @@ service_api_cmd(#nkreq{cmd = <<"nkmail/send">>, data=Msg, srv_id=SrvId, tid=TId}
         end),
     ack;
 
-service_api_cmd(_Req) ->
+service_api_cmd(_Id, _Req) ->
     continue.
 

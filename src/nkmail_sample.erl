@@ -147,20 +147,20 @@ plugin_deps() ->
 
 
 %% @doc
-service_api_syntax(Syntax, #nkreq{cmd = <<"nkmail_test_login">>}=Req) ->
+service_api_syntax(_Id, Syntax, #nkreq{cmd = <<"nkmail_test_login">>}=Req) ->
     {Syntax#{user=>binary}, Req};
 
-service_api_syntax(_Syntax, _Req) ->
+service_api_syntax(_Id, _Syntax, _Req) ->
     continue.
 
 
 %% @doc
-service_api_allow(_Req) ->
+service_api_allow(_Id, _Req) ->
     true.
 
 
 %% @doc Called on any command
-service_api_cmd(#nkreq{cmd = <<"nkmail_test_login">>, session_id=SessId, data=Data}=Req) ->
+service_api_cmd(_Id, #nkreq{cmd = <<"nkmail_test_login">>, session_id=SessId, data=Data}=Req) ->
     case Data of
         #{user:=User} ->
             {ok, #{sess_id=>SessId}, Req#nkreq{user_id=User}};
@@ -168,5 +168,5 @@ service_api_cmd(#nkreq{cmd = <<"nkmail_test_login">>, session_id=SessId, data=Da
             {error, invalid_user}
     end;
 
-service_api_cmd(_Req) ->
+service_api_cmd(_Id, _Req) ->
     continue.
