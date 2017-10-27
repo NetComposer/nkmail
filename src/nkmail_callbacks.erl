@@ -23,7 +23,7 @@
 -module(nkmail_callbacks).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([plugin_deps/0, service_init/2]).
+-export([service_init/2]).
 -export([error/1]).
 -export([nkmail_get_provider/2, nkmail_parse_provider/2, nkmail_send/3]).
 -export([service_api_cmd/2, service_api_syntax/3]).
@@ -45,10 +45,6 @@
 %% ===================================================================
 %% Plugin callbacks
 %% ===================================================================
-
-
-plugin_deps() ->
-    [].
 
 
 service_init(_Service, #{id:=SrvId}=State) ->

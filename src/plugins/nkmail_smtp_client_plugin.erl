@@ -20,40 +20,21 @@
 
 %% @doc NkMAIL callbacks
 
--module(nkmail_smtp_client_callbacks).
+-module(nkmail_smtp_client_plugin).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([nkmail_parse_provider/2, nkmail_send/3]).
-
-
--include("nkmail.hrl").
-
-
-%% ===================================================================
-%% Types
-%% ===================================================================
-
-% -type continue() :: continue | {continue, list()}.
+-export([plugin_deps/0]).
 
 
 
 
 %% ===================================================================
-%% Mail callbacks
+%% Plugin callbacks
+%%
+%% These are used when NkMAIL is started as a NkSERVICE plugin
 %% ===================================================================
 
-%% @private
-nkmail_parse_provider(Data, ParseOpts) ->
-    nkmail_smtp_client:parse_provider(Data, ParseOpts).
 
-
-%% @private
-nkmail_send(_SrvId, #{class:=smtp}=Provider, Msg) ->
-    nkmail_smtp_client:send(Msg, Provider);
-
-nkmail_send(_SrvId, _Provider, _Msg) ->
-    continue.
-
-
-
+plugin_deps() ->
+    [nkmail].
 
