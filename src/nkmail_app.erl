@@ -25,7 +25,6 @@
 -behaviour(application).
 
 -export([start/0, start/2, stop/1]).
--export([get_provider_ids/0, get_provider/1, put_provider/2]).
 -export([get/1, get/2, put/2, del/1]).
 
 -include("nkmail.hrl").
