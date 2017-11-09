@@ -30,16 +30,7 @@
 %% Records
 %% ===================================================================
 
--record(nkmail_msg, {
-    provider_id :: nkmail:provider_id(),
-    from :: {binary(), binary()} | undefined,
-    to :: {binary(), binary()},
-    subject :: binary(),
-    content_type :: binary(),
-    body :: binary(),
-    attachments :: [{Name::binary(), CT::binary(), Body::binary()}],
-    debug :: boolean
-}).
+
 
 -endif.
 

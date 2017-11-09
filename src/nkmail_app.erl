@@ -71,23 +71,6 @@ stop(_) ->
 
 
 
-%% #doc
-get_provider_ids() ->
-    get(provider_ids, []).
-
-
-%% #doc
-get_provider(Id) ->
-    get({provider, nklib_util:to_binary(Id)}, not_found).
-
-
-%% @doc
-put_provider(Id, Provider) ->
-    put(provider_ids, [Id|get_provider_ids()]),
-    put({provider, Id}, Provider).
-
-
-
 %% Configuration access
 get(Key) ->
     nklib_config:get(?APP, Key).

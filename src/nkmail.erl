@@ -23,37 +23,39 @@
 -module(nkmail).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([send/2, parse_provider/2, parse_provider/3, parse_msg/1, unparse_msg/1]).
--export_type([provider/0, msg/0, provider_id/0, provider_class/0]).
+-export([send/2, parse_provider/2]).
+-export_type([provider/0, msg/0]).
+
 -include("nkmail.hrl").
+-include_lib("nkservice/include/nkservice.hrl").
 
 
 %% ===================================================================
 %% Types
 %% ===================================================================
 
--type provider_id() :: term().
 -type provider_class() :: atom().
+-type provider_config() :: map().
+
 
 -type provider() ::
     #{
-        class => provider_class(),
-        from => binary(),
-        config => map()
+        class => provider_class(),      % A plugin must implement it
+        from => binary(),               % Default from
+        config => provider_config()     % Specific for each plugin
     }.
 
 
-% Parsed into a #nkmail_msg{} record
 -type msg() ::
     #{
-        provider_id => provider_id(),
         from => binary(),           % Optional, can be "a@a.com" or "Name <a@a.com>"
         to => binary(),             % Can be a list
         subject => binary(),
         content_type => binary(),   % "text/plain", "text/html"
         body => binary(),
         attachments => [#{name => binary, content_type => binary, body => binary}],
-        debug => boolean
+        debug => boolean,
+        provider => provider()      % Mandatory
     }.
 
 
@@ -64,55 +66,33 @@
 
 
 %% @doc Sends a mail message
--spec send(nkservice:id(), msg() | #nkmail_msg{}) ->
+-spec send(nkservice:id(), msg()) ->
     {ok, Meta::map()} | {error, term()}.
 
-send(SrvId, #nkmail_msg{provider_id=ProvId}=Mail) ->
-    case SrvId:nkmail_get_provider(SrvId, ProvId) of
-        {ok, Provider} ->
-            SrvId:nkmail_send(SrvId, Provider, Mail);
-        {error, Error} ->
-            {error, Error}
-    end;
-
 send(SrvId, Msg) ->
-    case parse_msg(Msg) of
-        {ok, #nkmail_msg{}=Mail} ->
-            send(SrvId, Mail);
+    case nklib_syntax:parse(Msg, msg_syntax()) of
+        {ok, #{provider:=Provider}=ParsedMsg, []} ->
+            case parse_provider(SrvId, Provider) of
+                {ok, ParsedProvider, _} ->
+                    Msg2 = ParsedMsg#{provider=>ParsedProvider},
+                    ?CALL_SRV(SrvId, nkmail_send, [SrvId, Msg2]);
+                {error, Error} ->
+                    {error, Error}
+            end;
+        {ok, _Parsed, _, [Key|_]} ->
+            {error, {unknown_field, Key}};
         {error, Error} ->
             {error, Error}
     end.
 
 
-%% @doc Parses a message
--spec parse_msg(map()) ->
-    {ok, #nkmail_msg{}} | {error, term()}.
-
-parse_msg(Map) ->
-    nkmail_util:parse_msg(Map).
-
-
-%% @doc
--spec unparse_msg(#nkmail_msg{}) ->
-    {ok, map()} | {error, term()}.
-
-unparse_msg(#nkmail_msg{}=Msg) ->
-    nkmail_util:unparse_msg(Msg).
-
 
 %% @doc Parses a provider
--spec parse_provider(nkservice:id(), map()) ->
+-spec parse_provider(nkservice:id(), provider()) ->
     {ok, provider()} | {error, term()}.
 
-parse_provider(Srv, Map) ->
-    parse_provider(Srv, Map, #{}).
-
-
--spec parse_provider(nkservice:id(), map(), nklib_syntax:parse_opts()) ->
-    {ok, provider(), [binary()]} | {error, term()}.
-
-parse_provider(SrvId, Map, ParseOpts) ->
-    case SrvId:nkmail_parse_provider(Map, ParseOpts) of
+parse_provider(SrvId, Map) ->
+    case ?CALL_SRV(SrvId, nkmail_parse_provider, [Map, #{}]) of
         {ok, Provider, UnknownFields} ->
             {ok, Provider, UnknownFields};
         {error, Error} ->
@@ -120,3 +100,28 @@ parse_provider(SrvId, Map, ParseOpts) ->
     end.
 
 
+%% @doc
+msg_syntax() ->
+    #{
+        provider => map,
+        from => fun nkmail_util:parse_msg_fun/2,
+        to => fun nkmail_util:parse_msg_fun/2,
+        subject => binary,
+        content_type => fun nkmail_util:parse_msg_fun/2,
+        body => binary,
+        attachments => {list,
+             #{
+                 name => binary,
+                 content_type => fun nkmail_util:parse_msg_fun/2,
+                 body => binary,
+                 '__mandatory' => [name, content_type, body]
+             }},
+        debug => boolean,
+        '__defaults' => #{
+            subject => <<>>,
+            content_type => <<"text/plain">>,
+            body => <<>>,
+            attachments => []
+        },
+        '__mandatory' => [provider, to]
+    }.

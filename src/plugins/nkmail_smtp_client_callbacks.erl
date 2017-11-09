@@ -23,7 +23,7 @@
 -module(nkmail_smtp_client_callbacks).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([nkmail_parse_provider/2, nkmail_send/3]).
+-export([nkmail_parse_provider/2, nkmail_send/2]).
 
 
 -include("nkmail.hrl").
@@ -43,15 +43,25 @@
 %% ===================================================================
 
 %% @private
-nkmail_parse_provider(Data, ParseOpts) ->
-    nkmail_smtp_client:parse_provider(Data, ParseOpts).
+nkmail_parse_provider(Data, ParserOpts) ->
+    case nklib_syntax:parse(Data, #{class=>atom}, ParserOpts) of
+        {ok, #{class:=smtp}, _} ->
+            case nklib_syntax:parse(Data, nkmail_smtp_client:provider_syntax()) of
+                {ok, Provider, UnknownFields} ->
+                    {ok, Provider, UnknownFields};
+                {error, Error} ->
+                    {error, Error}
+            end;
+        _ ->
+            continue
+    end.
 
 
 %% @private
-nkmail_send(_SrvId, #{class:=smtp}=Provider, Msg) ->
-    nkmail_smtp_client:send(Msg, Provider);
+nkmail_send(_SrvId, #{provider:=#{class:=smtp}}=Msg) ->
+    nkmail_smtp_client:send(Msg);
 
-nkmail_send(_SrvId, _Provider, _Msg) ->
+nkmail_send(_SrvId, _Msg) ->
     continue.
 
 

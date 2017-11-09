@@ -22,8 +22,7 @@
 
 -module(nkmail_smtp_client).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
--export([send/2]).
--export([parse_provider/2]).
+-export([send/1, provider_syntax/0]).
 -export_type([provider_config/0]).
 
 -include("nkmail.hrl").
@@ -52,56 +51,43 @@
 
 
 %% @doc
-send(#nkmail_msg{debug=Debug}=Msg, Provider) ->
+send(#{provider:=Provider}=Msg) ->
     Mail = make_msg(Msg, Provider),
     Config = maps:to_list(maps:get(config, Provider, #{})),
     Opts = make_send_opts(Config, []),
-    case gen_smtp_client:send_blocking(Mail, Opts) of
+    try gen_smtp_client:send_blocking(Mail, Opts) of
         <<"2.0.0 OK", _/binary>> = Reply ->
-            case Debug of
-                true ->
-                    lager:debug("Message sent OK: ~s\n~s", [Reply, element(3, Mail)]);
-                false ->
-                    o
-            end,
-            {ok, #{smtp_reply=>Reply}};
+            send_ok_reply(Reply, Msg, Mail);
+        % Mailgun response (!)
+        <<"Great success", _/binary>> = Reply ->
+            send_ok_reply(Reply, Msg, Mail);
         Other ->
             {error, {smtp_error, nklib_util:to_binary(Other)}}
+    catch
+        throw:{permanent_failure, Text} ->
+            {error, {smtp_error, Text}};
+        throw:Error ->
+            {error, {smtp_error, nklib_util:to_binary(Error)}}
     end.
 
 
-%% @doc
-make_msg(#nkmail_msg{from=MsgFrom}=Msg, #{from:=ProvFrom}) ->
-    case MsgFrom of
-        undefined ->
-            do_make_msg(Msg#nkmail_msg{from=ProvFrom});
-        _ ->
-            do_make_msg(Msg)
-    end.
+%% @private
+send_ok_reply(Reply, Msg, Mail) ->
+    case maps:get(debug, Msg, false) of
+        true ->
+            lager:debug("Message sent OK: ~s\n~s", [Reply, element(3, Mail)]);
+        false ->
+            ok
+    end,
+    {ok, #{smtp_reply=>Reply}}.
 
 
-%% @doc
--spec parse_provider(map(), nklib_syntax:parse_opts()) ->
-    {ok, nkmail:provider()} | {error, term()} | continue.
 
-parse_provider(Data, ParseOpts) ->
-    case nklib_syntax:parse(Data, #{class=>atom}, ParseOpts) of
-        {ok, #{class:=smtp}, _} ->
-            case nklib_syntax:parse(Data, provider_syntax()) of
-                {ok, Provider, UnknownFields} ->
-                    {ok, Provider, UnknownFields};
-                {error, Error} ->
-                    {error, Error}
-            end;
-        _ ->
-            continue
-    end.
 
 
 %% @private
 provider_syntax() ->
     #{
-        id => ignore,
         class => atom,
         from => fun nkmail_util:parse_msg_fun/2,
         config => #{
@@ -123,15 +109,25 @@ provider_syntax() ->
 %% Internal
 %% ===================================================================
 
+%% @doc
+make_msg(Msg, Provider) ->
+    case Msg of
+        #{from:=_} ->
+            do_make_msg(Msg);
+        _ ->
+            do_make_msg(Msg#{from=>maps:get(from, Provider)})
+    end.
+
+
 %% @private
-do_make_msg(#nkmail_msg{attachments=[]}=Msg) ->
-    #nkmail_msg{
-        from = From,
-        to = To,
-        subject = Subject,
-        content_type = CT,
-        body = Body
-    } = Msg,
+do_make_msg(#{attachments:=[]}=Msg) ->
+    #{
+        from := From,
+        to := To,
+        subject := Subject,
+        content_type := CT,
+        body := Body
+    }=Msg,
     case CT of
         <<"text/plain">> ->
             Mail = list_to_binary([
@@ -167,14 +163,14 @@ do_make_msg(#nkmail_msg{attachments=[]}=Msg) ->
     end;
 
 do_make_msg(Msg) ->
-    #nkmail_msg{
-        from = From,
-        to = To,
-        subject = Subject,
-        content_type = CT,
-        body = Body,
-        attachments = Attachments
-    } = Msg,
+    #{
+        from := From,
+        to := To,
+        subject := Subject,
+        content_type := CT,
+        body := Body,
+        attachments := Attachments
+    }=Msg,
     Attachs = get_attachments(Attachments, []),
     [CT1, CT2] = binary:split(CT, <<"/">>),
     MimeBody = {CT1, CT2, [], [], Body},
@@ -197,7 +193,7 @@ do_make_msg(Msg) ->
 get_attachments([], Acc) ->
     Acc;
 
-get_attachments([{Name, CT, Body}|Rest], Acc) ->
+get_attachments([#{name:=Name, content_type:=CT, body:=Body}|Rest], Acc) ->
     [CT1, CT2] = binary:split(CT, <<"/">>),
     Mime = {
         CT1,
@@ -209,8 +205,6 @@ get_attachments([{Name, CT, Body}|Rest], Acc) ->
         ],
         Body},
     get_attachments(Rest, [Mime|Acc]).
-
-
 
 
 %% @private
@@ -229,9 +223,4 @@ make_send_opts([{force_auth, true}|Rest], Acc) ->
 make_send_opts([_|Rest], Acc) ->
     make_send_opts(Rest, Acc).
 
-
-
-%% ===================================================================
-%% Internal
-%% ===================================================================
 
