@@ -51,10 +51,11 @@ start() ->
 
 %% @private OTP standard start callback
 start(_Type, _Args) ->
-    Syntax = #{providers => {list, map}},
+    Syntax = #{},
     case nklib_config:load_env(?APP, Syntax) of
         {ok, _} ->
             {ok, Vsn} = application:get_key(?APP, vsn),
+            ok = nkservice_util:register_package(?PKG_MAIL, nkmail),
             lager:info("NkMAIL v~s is starting", [Vsn]),
             {ok, Pid} = nkmail_sup:start_link(),
             {ok, Pid};

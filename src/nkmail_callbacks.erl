@@ -24,7 +24,7 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
 -export([error/1]).
--export([nkmail_parse_provider/2, nkmail_send/2]).
+-export([nkmail_send/4]).
 
 -include("nkmail.hrl").
 
@@ -44,7 +44,7 @@
 
 %% @doc
 error({smtp_error, Error})          -> {"SMTP error: ~p", [Error]};
-error(provider_class_not_found )      -> "Invalid provider class";
+error(backend_class_not_found )      -> "Invalid backend class";
 error(_)                            -> continue.
 
 
@@ -54,18 +54,10 @@ error(_)                            -> continue.
 %% ===================================================================
 
 
-%% @doc Parses a mail provider
--spec nkmail_parse_provider(nkmail:provider(), nklib_syntax:syntax()) ->
-    {ok, nkmail:provider(), [binary()]} | {error, term()} | continue().
-
-nkmail_parse_provider(_Provider, _ParserOpts) ->
-    {error, provider_class_not_found}.
-
-
 %% @doc Sends a mail message using a provider
--spec nkmail_send(nkservice:id(), map()) ->
+-spec nkmail_send(nkservice:id(), nkpackage:id(), Class::binary(), nkmail:msg()) ->
     ok | {error, term()} | continue().
 
-nkmail_send(_SrvId, _Msg) ->
-    erlang:error(provider_class_not_found).
+nkmail_send(_SrvId, _PackageId, _Class, _Msg) ->
+    {error, backend_class_not_found}.
 

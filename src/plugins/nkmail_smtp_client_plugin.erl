@@ -23,10 +23,9 @@
 -module(nkmail_smtp_client_plugin).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([plugin_deps/0]).
+-export([plugin_deps/0, plugin_config/3]).
 
-
-
+-include("nkmail.hrl").
 
 %% ===================================================================
 %% Plugin callbacks
@@ -38,3 +37,38 @@
 plugin_deps() ->
     [nkmail].
 
+%% @doc
+plugin_config(?PKG_MAIL, #{id:=Id, config:=Config}=Spec, _Service) ->
+    case nklib_syntax:parse(Config, #{backendClass=>binary}) of
+        {ok, #{backendClass:=<<"smtp">>}, _} ->
+            Syntax = #{
+                relay => binary,
+                port => integer,
+                username => binary,
+                password => binary,
+                retries => {integer, 0, 10},
+                hostname => binary,
+                force_tls => boolean,
+                force_auth => boolean
+            },
+            case nklib_syntax:parse(Config, Syntax, #{allow_unknown=>true}) of
+                {ok, Parsed, _} ->
+                    CacheMap1 = maps:get(cache_map, Spec, #{}),
+                    CacheMap2 = CacheMap1#{
+                        {nkmail, Id, backend_class} => <<"smtp">>,
+                        {nkmail_smtp, Id, config} => Parsed
+                    },
+                    Spec2 = Spec#{
+                        config := Parsed,
+                        cache_map => CacheMap2
+                    },
+                    {ok, Spec2};
+                {error, Error} ->
+                    {error, Error}
+            end;
+        _ ->
+            continue
+    end;
+
+plugin_config(_Class, _Package, _Service) ->
+    continue.

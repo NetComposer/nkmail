@@ -21,19 +21,41 @@
 %% @doc NkMAIL
 -module(nkmail_sample).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
--compile(export_all).
+-compile([export_all, nowarn_export_all]).
 
 -include_lib("nkservice/include/nkservice.hrl").
 
 -define(SRV, nkmail_test).
--define(WS, "ws:all:9010/nkmail").
-
+-define(PASS, <<>>).
 
 %% @doc Starts the service
 start() ->
     Spec = #{
-        callback => ?MODULE,
-        api_server => ?WS
+        plugins => [nkmail_smtp_client],
+        packages => [
+            #{
+                id => mail1,
+                class => 'Mail',
+                config => #{
+                    backendClass => smtp,
+                    relay => "smtp.gmail.com",
+                    port => 587,
+                    from => <<"NC <carlosj.gf@gmail.com">>,
+                    username => "carlosj.gf@gmail.com",
+                    password => ?PASS,
+                    force_tls => true,
+                    debug => true
+                }
+            }
+        ],
+        modules => [
+            #{
+                id => s1,
+                class => luerl,
+                code => s1(),
+                debug => true
+            }
+        ]
     },
     nkservice:start(?SRV, Spec).
 
@@ -43,26 +65,40 @@ stop() ->
     nkservice:stop(?SRV).
 
 
+send() ->
+    nkservice_luerl_instance:call({?SRV, s1, main}, [sendMail],
+                                  [<<"carlosj.gf@gmail.com">>, <<"test">>]).
 
-login() ->
-    Fun = fun ?MODULE:api_client_fun/2,
-    Login = #{
-        user => <<"test">>
-    },
-    {ok, _Reply, _Pid} = nkapi_client:start(?SRV, ?WS, Login, Fun, #{}, nkmail_test_login).
+
+s1() -> <<"
+    mailConfig = {
+        backendClass = 'smtp',
+        relay = 'smtp.gmail.com',
+        port = 587,
+        from = 'NC <carlosj.gf@gmail.com>',
+        username = 'carlosj.gf@gmail.com',
+        password = '',
+        force_tls = true,
+        debug = true
+    }
+
+    mail2 = startPackage('Mail', mailConfig)
+
+    function sendMail(dest, body)
+        return mail2.send({to=dest, body=body})
+    end
+
+">>.
 
 
 
 send1() ->
     Msg = #{
-        provider => "info.netcomposer",
-        % from => "My test <info.netcomposer@gmail.com>",
         to => "My dest <carlosj.gf@gmail.com>, <listas1@maycar.net>",
         subject => "sub2",
         body => "msg2"
     },
     send(Msg).
-
 
 
 send2() ->
@@ -71,102 +107,28 @@ send2() ->
     {ok, F2} = file:read_file(filename:join(Dir, "sample.pdf")),
 
     Msg = #{
-        provider => "info.netcomposer",
         from => "My test <info.netcomposer@gmail.com>",
-        to => "My dest <carlosj.gf@gmail.com>, <listas1@maycar.net>",
+        to => "My dest <carlosj.gf@gmail.com>",
         subject => "sub3",
         content_type => "text/html",
         %%  body => "This is <strong>msg3</strong> øÿ áñ"
         body => "This is <strong>msg3</strong> øÿ áéíóúñ",
         attachments => [
             #{
-                name => "File1",
+                name => "File1.jpg",
                 content_type => "image/jpeg",
-                body => base64:encode(F1)
+                body => F1
             },
             #{
-                name => "File2",
+                name => "File2.pdf",
                 content_type => "application/pdf",
-                body => base64:encode(F2)
+                body => F2
             }
         ]
     },
     send(Msg).
 
 
-send3() ->
-    Msg = #{
-        provider => "direct",
-        to => "<carlosj.gf@gmail.com>",
-        subject => "sub2",
-        body => "msg2"
-    },
-    send(Msg).
+send(Msg) ->
+    nkmail:send(?SRV, mail1, Msg).
 
-
-
-%% ===================================================================
-%% Util
-%% ===================================================================
-
-
-get_client() ->
-    [{_, Pid}|_] = nkapi_client:get_all(),
-    Pid.
-
-
-send(Data) ->
-    nkapi_client:cmd(get_client(), <<"nkmail/send">>, Data).
-
-
-%% ===================================================================
-%% Client fun
-%% ===================================================================
-
-
-api_client_fun(#nkreq{cmd = <<"event">>, data=Event}, State) ->
-    lager:notice("CLIENT event ~p", [lager:pr(Event, nkevent)]),
-    {ok, State};
-
-api_client_fun(#nkreq{cmd = <<"nkapi_test_login">>, data=Data}, State) ->
-    {ok, #{client=>Data}, State};
-
-api_client_fun(_Req, State) ->
-    % lager:error("API REQ: ~p", [lager:pr(_Req, ?MODULE)]),
-    {error, not_implemented, State}.
-
-
-
-%% ===================================================================
-%% API callbacks
-%% ===================================================================
-
-plugin_deps() ->
-    [nkapi, nkmail, nkmail_smtp_client].
-
-
-
-%% @doc
-service_api_syntax(_Id, Syntax, #nkreq{cmd = <<"nkmail_test_login">>}=Req) ->
-    {Syntax#{user=>binary}, Req};
-
-service_api_syntax(_Id, _Syntax, _Req) ->
-    continue.
-
-
-%% @doc
-service_api_allow(_Id, _Req) ->
-    true.
-
-
-%% @doc Called on any command
-service_api_cmd(_Id, #nkreq{cmd = <<"nkmail_test_login">>, session_id=SessId, data=Data}=Req) ->
-    case Data of
-        #{user:=User} ->
-            {ok, #{sess_id=>SessId}, Req#nkreq{user_id=User}};
-        _ ->
-            {error, invalid_user}
-    end;
-
-service_api_cmd(_Id, _Req) ->
-    continue.
