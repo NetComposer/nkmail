@@ -26,7 +26,7 @@
 -include_lib("nkservice/include/nkservice.hrl").
 
 -define(SRV, nkmail_test).
--define(PASS, <<>>).
+-define(PASS, <<"">>).
 
 %% @doc Starts the service
 start() ->

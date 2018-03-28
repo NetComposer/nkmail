@@ -1,2 +1,5 @@
 ebin
 .rebar3
+/_build
+/log
+/nkmail.version
