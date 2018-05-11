@@ -56,10 +56,12 @@ send(#{provider:=Provider}=Msg) ->
     Config = maps:to_list(maps:get(config, Provider, #{})),
     Opts = make_send_opts(Config, []),
     try gen_smtp_client:send_blocking(Mail, Opts) of
-        {error, Error} ->
-            {error, {smtp_error, nklib_util:to_binary(Error)}};
         Reply when is_binary(Reply) ->
-            send_ok_reply(Reply, Msg, Mail)
+            send_ok_reply(Reply, Msg, Mail);
+        {error, _Type, Error} ->
+            {error, {smtp_error, nklib_util:to_binary(Error)}};
+        {error, Error} ->
+            {error, {smtp_error, nklib_util:to_binary(Error)}}
 %%        <<"2.0.0 OK", _/binary>> = Reply ->
 %%            send_ok_reply(Reply, Msg, Mail);
 %%        % Mailgun response (!)
