@@ -74,7 +74,7 @@ send(SrvId, PackageId, Msg) ->
     PackageId2 = nklib_util:to_binary(PackageId),
     case nklib_syntax:parse(Msg, msg_syntax()) of
         {ok, Msg2, _} ->
-            Class = nkservice_util:get_cache(SrvId, {nkmail, PackageId2, backend_class}),
+            Class = nkservice_util:get_cache(SrvId, nkmail, PackageId2, backend_class),
             ?CALL_SRV(SrvId, nkmail_send, [SrvId, PackageId2, Class, Msg2]);
         {error, Error} ->
             {error, Error}

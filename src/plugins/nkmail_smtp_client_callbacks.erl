@@ -60,7 +60,7 @@ nkmail_send(_SrvId, _PackageId, _Class, _Msg) ->
 %% @doc
 send(SrvId, PackageId, Msg) ->
     Mail = make_msg(SrvId, PackageId, Msg),
-    Config = nkservice_util:get_cache(SrvId, {nkmail_smtp, PackageId, config}),
+    Config = nkservice_util:get_cache(SrvId, nkmail_smtp, PackageId, config),
     Opts = make_send_opts(maps:to_list(Config), []),
     try gen_smtp_client:send_blocking(Mail, Opts) of
         <<"2.0.0 OK", _/binary>> = Reply ->
@@ -80,7 +80,7 @@ send(SrvId, PackageId, Msg) ->
 
 %% @private
 send_ok_reply(SrvId, PackageId, Reply, Msg, Mail) ->
-    Def = nkservice_util:get_debug(SrvId, {nkmail, PackageId, debug}),
+    Def = nkservice_util:get_debug(SrvId, nkmail, PackageId, debug),
     case maps:get(debug, Msg, Def) of
         true ->
             lager:debug("Message sent OK: ~s\n~s", [Reply, element(3, Mail)]);
@@ -96,7 +96,7 @@ make_msg(SrvId, PackageId, Msg) ->
         #{from:=_} ->
             do_make_msg(Msg);
         _ ->
-            case nkservice_util:get_cache(SrvId, {nkmail, PackageId, from}) of
+            case nkservice_util:get_cache(SrvId, nkmail, PackageId, from) of
                 <<>> ->
                     {error, missing_from};
                 From ->

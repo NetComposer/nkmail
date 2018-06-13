@@ -53,16 +53,11 @@ plugin_config(?PKG_MAIL, #{id:=Id, config:=Config}=Spec, _Service) ->
             },
             case nklib_syntax:parse(Config, Syntax, #{allow_unknown=>true}) of
                 {ok, Parsed, _} ->
-                    CacheMap1 = maps:get(cache_map, Spec, #{}),
-                    CacheMap2 = CacheMap1#{
-                        {nkmail, Id, backend_class} => <<"smtp">>,
-                        {nkmail_smtp, Id, config} => Parsed
-                    },
-                    Spec2 = Spec#{
-                        config := Parsed,
-                        cache_map => CacheMap2
-                    },
-                    {ok, Spec2};
+                    CacheMap1 = nkservice_config_util:get_cache_map(Spec),
+                    CacheMap2 = nkservice_config_util:set_cache_key(nkmail, Id, backend_class, <<"smtp">>, CacheMap1),
+                    CacheMap3 = nkservice_config_util:set_cache_key(nkmail_smtp, Id, config, Parsed, CacheMap2),
+                    Spec2 = nkservice_config_util:set_cache_map(CacheMap3, Spec),
+                    {ok, Spec2#{config := Parsed}};
                 {error, Error} ->
                     {error, Error}
             end;
