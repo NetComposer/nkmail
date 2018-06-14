@@ -23,7 +23,7 @@
 -module(nkmail_callbacks).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([error/1]).
+-export([msg/1]).
 -export([nkmail_send/4]).
 
 -include("nkmail.hrl").
@@ -43,9 +43,9 @@
 %% ===================================================================
 
 %% @doc
-error({smtp_error, Error})          -> {"SMTP error: ~p", [Error]};
-error(backend_class_not_found )      -> "Invalid backend class";
-error(_)                            -> continue.
+msg({smtp_error, Error})          -> {"SMTP error: ~p", [Error]};
+msg(backend_class_not_found )      -> "Invalid backend class";
+msg(_)                            -> continue.
 
 
 
