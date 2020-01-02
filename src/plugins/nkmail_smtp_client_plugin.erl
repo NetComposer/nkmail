@@ -1,6 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% Copyright (c) 2017 Carlos Gonzalez Florido.  All Rights Reserved.
+%% Copyright (c) 2020 Carlos Gonzalez Florido.  All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -38,37 +38,16 @@ plugin_deps() ->
     [nkmail].
 
 %% @doc
-plugin_config(?PKG_MAIL, #{id:=Id, config:=Config}=Spec, _Service) ->
-    case nklib_syntax:parse(Config, #{backendClass=>binary}) of
-        {ok, #{backendClass:=<<"smtp">>}, _} ->
-            Syntax = #{
-                relay => binary,
-                port => integer,
-                username => binary,
-                password => binary,
-                retries => {integer, 0, 10},
-                hostname => binary,
-                force_tls => boolean,
-                force_auth => boolean
-            },
-            case nklib_syntax:parse(Config, Syntax, #{allow_unknown=>true}) of
-                {ok, Parsed, _} ->
-                    CacheMap1 = maps:get(cache_map, Spec, #{}),
-                    CacheMap2 = CacheMap1#{
-                        {nkmail, Id, backend_class} => <<"smtp">>,
-                        {nkmail_smtp, Id, config} => Parsed
-                    },
-                    Spec2 = Spec#{
-                        config := Parsed,
-                        cache_map => CacheMap2
-                    },
-                    {ok, Spec2};
-                {error, Error} ->
-                    {error, Error}
-            end;
-        _ ->
-            continue
-    end;
+plugin_config(_SrvId, Config, #{class:=nkmail}) ->
+    Syntax = #{
+        smtp_relay => binary,
+        smtp_port => integer,
+        smtp_username => binary,
+        smtp_password => binary,
+        smtp_retries => {integer, 0, 10},
+        smtp_hostname => binary,
+        smtp_force_tls => boolean,
+        smtp_force_auth => boolean
+    },
+    nkserver_util:parse_config(Config, Syntax).
 
-plugin_config(_Class, _Package, _Service) ->
-    continue.

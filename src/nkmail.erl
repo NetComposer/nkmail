@@ -1,6 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% Copyright (c) 2017 Carlos Gonzalez Florido.  All Rights Reserved.
+%% Copyright (c) 2020 Carlos Gonzalez Florido.  All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -23,11 +23,11 @@
 -module(nkmail).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([send/3, luerl_send/3]).
+-export([send/2]).
 -export_type([msg/0]).
 
 -include("nkmail.hrl").
--include_lib("nkservice/include/nkservice.hrl").
+-include_lib("nkserver/include/nkserver.hrl").
 
 
 %% ===================================================================
@@ -67,29 +67,13 @@
 
 
 %% @doc Sends a file to the backend
--spec send(nkservice:id(), nkservice:package_id(), msg()) ->
+-spec send(nkserver:id(), msg()) ->
     {ok, meta()} | {error, term()}.
 
-send(SrvId, PackageId, Msg) ->
-    PackageId2 = nklib_util:to_binary(PackageId),
+send(SrvId, Msg) ->
     case nklib_syntax:parse(Msg, msg_syntax()) of
         {ok, Msg2, _} ->
-            Class = nkservice_util:get_cache(SrvId, {nkmail, PackageId2, backend_class}),
-            ?CALL_SRV(SrvId, nkmail_send, [SrvId, PackageId2, Class, Msg2]);
-        {error, Error} ->
-            {error, Error}
-    end.
-
-
-%% ===================================================================
-%% Public
-%% ===================================================================
-
-%% @private
-luerl_send(SrvId, PackageId, [Msg]) ->
-    case send(SrvId, PackageId, Msg) of
-        {ok, _} ->
-            [<<"ok">>];
+            ?CALL_SRV(SrvId, nkmail_send, [SrvId, Msg2]);
         {error, Error} ->
             {error, Error}
     end.

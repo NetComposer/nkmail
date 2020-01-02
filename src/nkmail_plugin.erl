@@ -1,6 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% Copyright (c) 2017 Carlos Gonzalez Florido.  All Rights Reserved.
+%% Copyright (c) 2020 Carlos Gonzalez Florido.  All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -23,7 +23,7 @@
 -module(nkmail_plugin).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([plugin_deps/0, plugin_api/1, plugin_config/3]).
+-export([plugin_deps/0, plugin_config/3, plugin_cache/3]).
 
 -include("nkmail.hrl").
 
@@ -37,52 +37,26 @@
 plugin_deps() ->
     [].
 
-%% @doc
-plugin_api(?PKG_MAIL) ->
-    #{
-        luerl => #{
-            send => {nkmail, luerl_send}
-        }
-    };
-
-plugin_api(_Class) ->
-    #{}.
-
 
 %% @doc
-plugin_config(?PKG_MAIL, #{id:=Id, config:=Config}=Spec, _Service) ->
+plugin_config(_SrvId, Config, #{class:=nkmail}) ->
     Syntax = #{
-        backendClass => binary,
         from => binary,
-        debug => boolean,
-        '__mandatory' => [backendClass]
+        debug => boolean
     },
-    case nklib_syntax:parse(Config, Syntax, #{allow_unknown=>true}) of
-        {ok, Parsed, _} ->
-            Debug = maps:get(debug, Parsed, false),
-            DebugMap1 = maps:get(debug_map, Spec, #{}),
-            DebugMap2 = DebugMap1#{{nkmail, Id, debug} => Debug},
-            CacheMap1 = maps:get(cache_map, Spec, #{}),
-            case maps:is_key({nkmail, Id, backend_class}, CacheMap1) of
-                true ->
-                    CacheMap2 = CacheMap1#{
-                        {nkmail, Id, from} => maps:get(from, Parsed, <<>>)
-                    },
-                    Spec2 = Spec#{
-                        config := Parsed,
-                        cache_map => CacheMap2,
-                        debug_map => DebugMap2
-                    },
-                    {ok, Spec2};
-                false ->
-                    {error, unknown_backend_class}
-            end;
-        {error, Error} ->
-            {error, Error}
-    end;
+    nkserver_util:parse_config(Config, Syntax).
 
-plugin_config(_Class, _Package, _Service) ->
-    continue.
+
+%% @doc
+plugin_cache(_SrvId, Config, _Service) ->
+    Cache = #{
+        from => maps:get(from, Config, <<>>),
+        debug => maps:get(debug, Config, false)
+    },
+    {ok, Cache}.
+
+
+
 
 
 %% ===================================================================

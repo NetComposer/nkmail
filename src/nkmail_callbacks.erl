@@ -1,6 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% Copyright (c) 2017 Carlos Gonzalez Florido.  All Rights Reserved.
+%% Copyright (c) 2020 Carlos Gonzalez Florido.  All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -24,7 +24,7 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
 -export([error/1]).
--export([nkmail_send/4]).
+-export([nkmail_send/2]).
 
 -include("nkmail.hrl").
 
@@ -44,7 +44,6 @@
 
 %% @doc
 error({smtp_error, Error})          -> {"SMTP error: ~p", [Error]};
-error(backend_class_not_found )      -> "Invalid backend class";
 error(_)                            -> continue.
 
 
@@ -55,9 +54,9 @@ error(_)                            -> continue.
 
 
 %% @doc Sends a mail message using a provider
--spec nkmail_send(nkservice:id(), nkpackage:id(), Class::binary(), nkmail:msg()) ->
+-spec nkmail_send(nkserver:id(), nkmail:msg()) ->
     ok | {error, term()} | continue().
 
-nkmail_send(_SrvId, _PackageId, _Class, _Msg) ->
-    {error, backend_class_not_found}.
+nkmail_send(_SrvId, _Msg) ->
+    {error, backend_not_implemented}.
 

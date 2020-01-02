@@ -1,6 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% Copyright (c) 2017 Carlos Gonzalez Florido.  All Rights Reserved.
+%% Copyright (c) 2020 Carlos Gonzalez Florido.  All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -42,7 +42,7 @@
     ok | {error, Reason::term()}.
 
 start() ->
-    case nklib_util:ensure_all_started(?APP, permanent) of
+    case application:ensure_all_started(?APP, permanent) of
         {ok, _Started} ->
             ok;
         Error ->
@@ -55,7 +55,6 @@ start(_Type, _Args) ->
     case nklib_config:load_env(?APP, Syntax) of
         {ok, _} ->
             {ok, Vsn} = application:get_key(?APP, vsn),
-            ok = nkservice_util:register_package(?PKG_MAIL, nkmail),
             lager:info("NkMAIL v~s is starting", [Vsn]),
             {ok, Pid} = nkmail_sup:start_link(),
             {ok, Pid};

@@ -1,6 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% Copyright (c) 2017 Carlos Gonzalez Florido.  All Rights Reserved.
+%% Copyright (c) 2020 Carlos Gonzalez Florido.  All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -23,7 +23,7 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -compile([export_all, nowarn_export_all]).
 
--include_lib("nkservice/include/nkservice.hrl").
+-include_lib("nkserver/include/nkserver.hrl").
 
 -define(SRV, nkmail_test).
 -define(PASS, <<"">>).
@@ -32,63 +32,20 @@
 start() ->
     Spec = #{
         plugins => [nkmail_smtp_client],
-        packages => [
-            #{
-                id => mail1,
-                class => 'Mail',
-                config => #{
-                    backendClass => smtp,
-                    relay => "smtp.gmail.com",
-                    port => 587,
-                    from => <<"NC <carlosj.gf@gmail.com">>,
-                    username => "carlosj.gf@gmail.com",
-                    password => ?PASS,
-                    force_tls => true,
-                    debug => true
-                }
-            }
-        ],
-        modules => [
-            #{
-                id => s1,
-                class => luerl,
-                code => s1(),
-                debug => true
-            }
-        ]
+        relay => "smtp.gmail.com",
+        port => 587,
+        from => <<"NC <carlosj.gf@gmail.com">>,
+        username => "carlosj.gf@gmail.com",
+        password => ?PASS,
+        force_tls => true,
+        debug => true
     },
-    nkservice:start(?SRV, Spec).
+    nkserver:start_link(nkmail, ?SRV, Spec).
 
 
 %% @doc Stops the service
 stop() ->
-    nkservice:stop(?SRV).
-
-
-send() ->
-    nkservice_luerl_instance:call({?SRV, s1, main}, [sendMail],
-                                  [<<"carlosj.gf@gmail.com">>, <<"test">>]).
-
-
-s1() -> <<"
-    mailConfig = {
-        backendClass = 'smtp',
-        relay = 'smtp.gmail.com',
-        port = 587,
-        from = 'NC <carlosj.gf@gmail.com>',
-        username = 'carlosj.gf@gmail.com',
-        password = '',
-        force_tls = true,
-        debug = true
-    }
-
-    mail2 = startPackage('Mail', mailConfig)
-
-    function sendMail(dest, body)
-        return mail2.send({to=dest, body=body})
-    end
-
-">>.
+    nkserver:stop(?SRV).
 
 
 
@@ -130,5 +87,5 @@ send2() ->
 
 
 send(Msg) ->
-    nkmail:send(?SRV, mail1, Msg).
+    nkmail:send(?SRV, Msg).
 
